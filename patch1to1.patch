@@ -1,0 +1,130 @@
+diff --git a/js/app.js b/js/app.js
+index 51ae594..c0ffee1 100644
+--- a/js/app.js
++++ b/js/app.js
+@@ -1,25 +1,46 @@
+-/* Automazione UI — SmartThings-like 2x2 */
+-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzRf9E4gTCHnq3-9Hm6BPLjIxwuTM5CiawvdbV1zKFfVQew0MWMD-Eq8nTqRW_c67uG/exec';
+-let MODEL=null; let isUpGuess=true;
+-const $=s=>document.querySelector(s); const $$=s=>Array.from(document.querySelectorAll(s));
+-function toast(m){const t=$('#toast'); t.textContent=m||''; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1700);}
+-function fmtTs(d){if(!d) return '—'; const dt=(d instanceof Date)?d:new Date(d); return new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short'}).format(dt);}
+-function weatherEmoji(k){const map={sun:'☀️',few:'🌤️',part:'⛅',cloud:'☁️',fog:'🌫️',drizzle:'🌦️',rain:'🌧️',showers:'🌦️',storm:'⛈️',hail:'🌨️'}; return map[k]||'☀️';}
+-function setBadgeState(state){
+-  const el=$('#stateBadge'); el.classList.remove('ok','alert'); let label='—';
+-  if(!state){el.textContent=label; return;} const s=String(state).toUpperCase();
+-  if(s.startsWith('COMFY')){ el.classList.add('ok'); label='COMFY'; }
+-  else if(s.startsWith('SECURITY')){ el.classList.add('alert'); label='SECURITY'; }
+-  else { label = s; }
+-  el.textContent = label;
+-}
++/* Automazione UI — SmartThings-like 2x2 (auto-refresh + DAY/NIGHT) */
++const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzRf9E4gTCHnq3-9Hm6BPLjIxwuTM5CiawvdbV1zKFfVQew0MWMD-Eq8nTqRW_c67uG/exec';
++let MODEL=null; let isUpGuess=true; let ACTIVE_TAB='home';
++const $=s=>document.querySelector(s); const $$=s=>Array.from(document.querySelectorAll(s));
++function toast(m){const t=$('#toast'); t.textContent=m||''; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1700);}
++function fmtTs(d){if(!d) return '—'; const dt=(d instanceof Date)?d:new Date(d); return new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short'}).format(dt);}
++function weatherEmoji(k){const map={sun:'☀️',few:'🌤️',part:'⛅',cloud:'☁️',fog:'🌫️',drizzle:'🌦️',rain:'🌧️',showers:'🌦️',storm:'⛈️',hail:'🌨️'}; return map[k]||'☀️';}
++function setBadgeState(state){
++  const el=$('#stateBadge');
++  el.className='state-badge';
++  if(!state){el.textContent='—'; return;}
++  const s=String(state).toUpperCase(); // es. COMFY_DAY
++  if(s.startsWith('COMFY')) el.classList.add('ok');
++  else if(s.startsWith('SECURITY')) el.classList.add('alert');
++  el.textContent = s.replace('_',' '); // -> "COMFY DAY"
++}
+ function navTo(tab){
+-  const map={home:'#pageHome',people:'#pagePeople',devices:'#pageDevices',log:'#pageLog'};
++  ACTIVE_TAB = tab;
++  const map={home:'#pageHome',people:'#pagePeople',devices:'#pageDevices',log:'#pageLog'};
+   $$('.page').forEach(p=>p.classList.remove('page-active'));
+   document.querySelector(map[tab]).classList.add('page-active');
+   $$('.nav-btn').forEach(b=>b.classList.remove('nav-active'));
+   document.querySelector(`.nav-btn[data-tab="${tab}"]`).classList.add('nav-active');
+   if(tab==='people') loadPeople();
+   if(tab==='devices') loadCams();
+   if(tab==='log') loadErrors();
+ }
++// no-cache helper per JSONP
++function nocache(u){const sep=u.includes('?')?'&':'?'; return u+sep+'t='+Date.now();}
+@@
+ function callAdmin(evt,value){
+   return new Promise((resolve,reject)=>{
+     const cb='cb_admin_'+Math.random().toString(36).slice(2);
+-    window[cb]=(res)=>{ try{ delete window[cb]; resolve(res); }catch{} };
+-    const v=(value===undefined)? '' : '&value='+encodeURIComponent(String(value));
+-    const url = `${ENDPOINT_URL}?admin=1&event=${encodeURIComponent(evt)}&callback=${cb}${v}`;
++    const timer=setTimeout(()=>{toast('Timeout comando: '+evt); reject(new Error('timeout'));},6000);
++    window[cb]=(res)=>{ clearTimeout(timer); try{ delete window[cb]; }catch{}; resolve(res); };
++    const v=(value===undefined)? '' : '&value='+encodeURIComponent(String(value));
++    const url = nocache(`${ENDPOINT_URL}?admin=1&event=${encodeURIComponent(evt)}&callback=${cb}${v}`);
+     const s=document.createElement('script'); s.src=url; s.onerror=reject;
+     document.body.appendChild(s);
+     setTimeout(()=>{ try{ s.remove(); }catch{} }, 2000);
+   });
+ }
+@@
+ function jsonp(path, cbname){
+   return new Promise((resolve,reject)=>{
+     const cb = cbname || ('cb_'+Math.random().toString(36).slice(2));
+-    window[cb] = (res)=>{ try{ delete window[cb]; resolve(res); }catch{} };
+-    const url = `${ENDPOINT_URL}${path}${path.includes('?')?'&':'?'}callback=${cb}`;
++    window[cb] = (res)=>{ try{ delete window[cb]; resolve(res); }catch{} };
++    const url = nocache(`${ENDPOINT_URL}${path}${path.includes('?')?'&':'?'}callback=${cb}`);
+     const s = document.createElement('script'); s.src = url; s.onerror = reject;
+     document.body.appendChild(s);
+     setTimeout(()=>{ try{ s.remove(); }catch{} }, 3000);
+   });
+ }
+@@
+ function loadModel(){
+   return new Promise((resolve,reject)=>{
+     window.onModel = (m)=>{ try{ MODEL=m; renderHome(m); resolve(m); }catch(e){reject(e);} };
+     const s = document.createElement('script');
+-    s.src = `${ENDPOINT_URL}?callback=onModel`; s.onerror = reject;
++    s.src = nocache(`${ENDPOINT_URL}?callback=onModel`); s.onerror = reject;
+     document.body.appendChild(s);
+     setTimeout(()=>{ try{ s.remove(); }catch{} }, 3000);
+   });
+ }
+@@
+ function renderHome(m){
+   setBadgeState(m && m.state);
+   if(m && m.weather){
+     $('#weatherIcon').textContent = weatherEmoji(m.weather.iconEmoji || '');
+     $('#weatherTemp').textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+'°' : '--°');
+     $('#weatherWind').textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+' km/h' : '-- km/h');
+   }
+   const ev = (m && m.energy && m.energy.kwh!=null) ? m.energy.kwh : null;
+   $('#energyValue').textContent = (ev!=null ? String(ev)+' kWh' : '— kWh');
+   $('#lblOverride').textContent = (m && m.override) ? 'On' : 'Off';
+   $('#lblVacanza').textContent = (m && m.vacanza) ? 'On' : 'Off';
+   $('#btnOverride').classList.toggle('on', !!(m && m.override));
+   $('#btnVacanza').classList.toggle('on', !!(m && m.vacanza));
+   const st = String(m && m.state || '').toUpperCase();
+   isUpGuess = (st==='COMFY_DAY');
+   $('#lblAlza').textContent = isUpGuess ? 'Abbassa' : 'Alza';
+   const ppl = (m && m.people) ? m.people : [];
+   const onCount = ppl.filter(p=>p.online).length;
+   $('#peopleSummary').textContent = `${onCount} online / ${ppl.length} totali`;
+ }
+@@
+ document.addEventListener('DOMContentLoaded', async ()=>{
+   wire();
+-  try{
+-    await loadModel();
+-  }catch(e){
+-    toast('Errore caricamento modello'); console.error(e);
+-  }
++  try{ await loadModel(); }catch(e){ toast('Errore caricamento modello'); console.error(e); }
++  // ⏱ refresh automatico ogni 2 minuti (ricarica anche la tab attiva)
++  setInterval(async ()=>{
++    try{
++      await loadModel();
++      if (ACTIVE_TAB==='people') loadPeople();
++      if (ACTIVE_TAB==='devices') loadCams();
++      if (ACTIVE_TAB==='log') loadErrors();
++    }catch(e){ /* silent */ }
++  }, 120000);
+ });
