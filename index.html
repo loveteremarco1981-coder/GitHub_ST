@@ -4,13 +4,18 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
   <title>Automazione • Home</title>
+
+  <!-- No-store per evitare caching aggressiva dell'HTML -->
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
-  assets/style.css?v=20260222T1515
+
+  <!-- ✅ CSS corretto -->
+  <link rel="stylesheet" href="assets/style.css?v=20260222T1515">
 </head>
 <body>
   <div id="app">
+    <!-- Top bar -->
     <header class="topbar">
       <div class="title-area">
         <h1 class="app-title">Home</h1>
@@ -24,16 +29,19 @@
       </div>
     </header>
 
+    <!-- Barra Persone (clic → pagina Persone) -->
     <div id="peopleBar" class="people-bar" role="button" tabindex="0">
       <span>Persone</span>
       <span id="peopleSummary" class="people-summary">—</span>
     </div>
 
+    <!-- Pagina Home -->
     <main id="pageHome" class="page page-active">
       <section class="card energy-card">
         <div class="card-title">Energy</div>
         <div class="energy-value" id="energyValue">— kWh</div>
       </section>
+
       <section class="favorites">
         <div class="fav-grid">
           <button id="btnOverride" class="tile tile-md">
@@ -60,6 +68,7 @@
       </section>
     </main>
 
+    <!-- Pagina Persone -->
     <main id="pagePeople" class="page">
       <section class="card">
         <div class="card-title">Persone</div>
@@ -67,16 +76,24 @@
       </section>
     </main>
 
+    <!-- Pagina Dispositivi -->
     <main id="pageDevices" class="page">
       <section class="card">
         <div class="card-title">Telecamere</div>
         <div class="cams">
-          <div class="cam-row"><span>Interne</span><span id="camInterne" class="badge">—</span></div>
-          <div class="cam-row"><span>Esterne</span><span id="camEsterne" class="badge">—</span></div>
+          <div class="cam-row">
+            <span>Interne</span>
+            <span id="camInterne" class="badge">—</span>
+          </div>
+          <div class="cam-row">
+            <span>Esterne</span>
+            <span id="camEsterne" class="badge">—</span>
+          </div>
         </div>
       </section>
     </main>
 
+    <!-- Pagina Log -->
     <main id="pageLog" class="page">
       <section class="card">
         <div class="card-title">Log (solo errori)</div>
@@ -84,6 +101,7 @@
       </section>
     </main>
 
+    <!-- Bottom nav -->
     <nav class="bottom-nav">
       <button data-tab="home" class="nav-btn nav-active">Home</button>
       <button data-tab="people" class="nav-btn">Persone</button>
@@ -93,6 +111,8 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  js/app.js?v=20260222T1515</script>
+
+  <!-- ✅ JS corretto -->
+  <script src="js/app.js?v=20260222T1515"></script>
 </body>
 </html>
