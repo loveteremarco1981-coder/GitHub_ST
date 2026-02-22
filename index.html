@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+  <title>Automazione • Home</title>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+  assets/style.css?v=20260222T1515
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="title-area">
+        <h1 class="app-title">Home</h1>
+        <span id="stateBadge" class="state-badge">—</span>
+      </div>
+      <div id="weatherPill" class="weather-pill">
+        <span id="weatherIcon" class="w-ico">☀️</span>
+        <span id="weatherTemp">--°</span>
+        <span class="dot">·</span>
+        <span id="weatherWind">-- km/h</span>
+      </div>
+    </header>
+
+    <div id="peopleBar" class="people-bar" role="button" tabindex="0">
+      <span>Persone</span>
+      <span id="peopleSummary" class="people-summary">—</span>
+    </div>
+
+    <main id="pageHome" class="page page-active">
+      <section class="card energy-card">
+        <div class="card-title">Energy</div>
+        <div class="energy-value" id="energyValue">— kWh</div>
+      </section>
+      <section class="favorites">
+        <div class="fav-grid">
+          <button id="btnOverride" class="tile tile-md">
+            <div class="tile-ico">🛡️</div>
+            <div class="tile-txt">Override</div>
+            <div id="lblOverride" class="tile-sub">Off</div>
+          </button>
+          <button id="btnVacanza" class="tile tile-md">
+            <div class="tile-ico">🏖️</div>
+            <div class="tile-txt">Vacanza</div>
+            <div id="lblVacanza" class="tile-sub">Off</div>
+          </button>
+          <button id="btnPiante" class="tile tile-md">
+            <div class="tile-ico">🌿</div>
+            <div class="tile-txt">Piante</div>
+            <div class="tile-sub">Irriga</div>
+          </button>
+          <button id="btnAlza" class="tile tile-md">
+            <div class="tile-ico">🪟</div>
+            <div id="lblAlza" class="tile-txt">Alza</div>
+            <div class="tile-sub">Se clicco si abbassa</div>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <main id="pagePeople" class="page">
+      <section class="card">
+        <div class="card-title">Persone</div>
+        <ul id="peopleList" class="list"></ul>
+      </section>
+    </main>
+
+    <main id="pageDevices" class="page">
+      <section class="card">
+        <div class="card-title">Telecamere</div>
+        <div class="cams">
+          <div class="cam-row"><span>Interne</span><span id="camInterne" class="badge">—</span></div>
+          <div class="cam-row"><span>Esterne</span><span id="camEsterne" class="badge">—</span></div>
+        </div>
+      </section>
+    </main>
+
+    <main id="pageLog" class="page">
+      <section class="card">
+        <div class="card-title">Log (solo errori)</div>
+        <ul id="logErrors" class="list"></ul>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button data-tab="home" class="nav-btn nav-active">Home</button>
+      <button data-tab="people" class="nav-btn">Persone</button>
+      <button data-tab="devices" class="nav-btn">Dispositivi</button>
+      <button data-tab="log" class="nav-btn">Log</button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  js/app.js?v=20260222T1515</script>
+</body>
+</html>
