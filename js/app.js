@@ -1,5 +1,5 @@
 /* Automazione UI — SmartThings-like 2x2 (badge DAY/NIGHT + people ts + autorefresh) */
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzRf9E4gTCHnq3-9Hm6BPLjIxwuTM5CiawvdbV1zKFfVQew0MWMD-Eq8nTqRW_c67uG/exec';
+const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzgpinR2mH8Da9CHULvyY6Jk-kFCWuyv1fumqWcpdCi7AdElBc1Kt-CxMYa9pW-Yvqf/exec';
 
 let MODEL = null;
 let isUpGuess = true;
