@@ -32,3 +32,35 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.2 system-ui,
 .nav-btn.nav-active{border-color:#4da3ff;background:#12233b;color:#fff}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:#101826;color:#e7f1ff;padding:10px 14px;border:1px solid #294163;border-radius:10px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
+
+.cruscotto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  padding: 14px;
+}
+
+.cr-tile {
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 18px 12px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 0 12px rgba(0,0,0,0.2);
+}
+
+.cr-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.cr-title {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+
+.cr-value {
+  font-size: 1rem;
+  font-weight: 600;
+}
