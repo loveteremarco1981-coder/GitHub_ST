@@ -5,120 +5,123 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
   <title>Automazione • Home</title>
 
-  <!-- No-store per evitare caching aggressiva dell'HTML -->
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <!-- ✅ CSS corretto -->
   <link rel="stylesheet" href="assets/style.css?v=20260222T1515">
 </head>
+
 <body>
-  <div id="app">
-    <!-- Top bar -->
-    <header class="topbar">
-      <div class="title-area">
-        <h1 class="app-title">Home</h1>
-        <span id="stateBadge" class="state-badge">—</span>
-      </div>
-      <div id="weatherPill" class="weather-pill">
-        <span id="weatherIcon" class="w-ico">☀️</span>
-        <span id="weatherTemp">--°</span>
-        <span class="dot">·</span>
-        <span id="weatherWind">-- km/h</span>
-      </div>
-    </header>
+<div id="app">
 
-    <!-- Barra Persone (clic → pagina Persone) -->
-    <div id="peopleBar" class="people-bar" role="button" tabindex="0">
-      <span>Persone</span>
-      <span id="peopleSummary" class="people-summary">—</span>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="title-area">
+      <h1 class="app-title">Home</h1>
+      <span id="stateBadge" class="state-badge">—</span>
     </div>
+    <div id="weatherPill" class="weather-pill">
+      <span id="weatherIcon" class="w-ico">☀️</span>
+      <span id="weatherTemp">--°</span>
+      <span class="dot">·</span>
+      <span id="weatherWind">-- km/h</span>
+    </div>
+  </header>
 
-    <!-- Pagina Home -->
-    <main id="pageHome" class="page page-active">
-      <section class="card energy-card">
-        <div class="card-title">Energy</div>
-        <div class="energy-value" id="energyValue">— kWh</div>
-      </section>
-
-      <section class="favorites">
-        <div class="fav-grid">
-          <button id="btnOverride" class="tile tile-md">
-            <div class="tile-ico">🛡️</div>
-            <div class="tile-txt">Override</div>
-            <div id="lblOverride" class="tile-sub">Off</div>
-          </button>
-          <button id="btnVacanza" class="tile tile-md">
-            <div class="tile-ico">🏖️</div>
-            <div class="tile-txt">Vacanza</div>
-            <div id="lblVacanza" class="tile-sub">Off</div>
-          </button>
-          <button id="btnPiante" class="tile tile-md">
-            <div class="tile-ico">🌿</div>
-            <div class="tile-txt">Piante</div>
-            <div class="tile-sub">Irriga</div>
-          </button>
-          <button id="btnAlza" class="tile tile-md">
-            <div class="tile-ico">🪟</div>
-            <div id="lblAlza" class="tile-txt">Alza</div>
-            <div class="tile-sub">Se clicco si abbassa</div>
-          </button>
-        </div>
-      </section>
-    </main>
-
-    <!-- Pagina Persone -->
-    <main id="pagePeople" class="page">
-      <section class="card">
-        <div class="card-title">Persone</div>
-        <ul id="peopleList" class="list"></ul>
-      </section>
-    </main>
-
-    <!-- Pagina Dispositivi -->
-    <main id="pageDevices" class="page">
-      <section class="card">
-        <div class="card-title">Telecamere</div>
-        <div class="cams">
-          <div class="cam-row">
-            <span>Interne</span>
-            <span id="camInterne" class="badge">—</span>
-          </div>
-          <div class="cam-row">
-            <span>Esterne</span>
-            <span id="camEsterne" class="badge">—</span>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- Pagina Log -->
-    <main id="pageLog" class="page">
-      <section class="card">
-        <div class="card-title">Log (solo errori)</div>
-        <ul id="logErrors" class="list"></ul>
-      </section>
-    </main>
-
-    <!-- Pagina Cruscotto -->
-    <main id="pageCruscotto" class="page">
-  <section class="cruscotto-grid" id="cruscottoGrid"></section>
-</main>
-    
-    <!-- Bottom nav -->
-    <nav class="bottom-nav">
-      <button data-tab="home" class="nav-btn nav-active">Home</button>
-      <button data-tab="people" class="nav-btn">Persone</button>
-      <button data-tab="devices" class="nav-btn">Dispositivi</button>
-      <button data-tab="log" class="nav-btn">Log</button>
-      <button data-tab="cruscotto" class="nav-btn">Cruscotto</button>
-    </nav>
+  <!-- People bar -->
+  <div id="peopleBar" class="people-bar" role="button" tabindex="0">
+    <span>Persone</span>
+    <span id="peopleSummary" class="people-summary">—</span>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <!-- HOME -->
+  <main id="pageHome" class="page page-active">
+    <section class="card energy-card">
+      <div class="card-title">Energy</div>
+      <div class="energy-value" id="energyValue">— kWh</div>
+    </section>
 
-  <!-- ✅ JS corretto -->
-  <script src="js/app.js?v=20260222T1515"></script>
+    <section class="favorites">
+      <div class="fav-grid">
+        <button id="btnOverride" class="tile tile-md">
+          <div class="tile-ico">🛡️</div>
+          <div class="tile-txt">Override</div>
+          <div id="lblOverride" class="tile-sub">Off</div>
+        </button>
+
+        <button id="btnVacanza" class="tile tile-md">
+          <div class="tile-ico">🏖️</div>
+          <div class="tile-txt">Vacanza</div>
+          <div id="lblVacanza" class="tile-sub">Off</div>
+        </button>
+
+        <button id="btnPiante" class="tile tile-md">
+          <div class="tile-ico">🌿</div>
+          <div class="tile-txt">Piante</div>
+          <div class="tile-sub">Irriga</div>
+        </button>
+
+        <button id="btnAlza" class="tile tile-md">
+          <div class="tile-ico">🪟</div>
+          <div id="lblAlza" class="tile-txt">Alza</div>
+          <div class="tile-sub">Se clicco si abbassa</div>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- PEOPLE -->
+  <main id="pagePeople" class="page">
+    <section class="card">
+      <div class="card-title">Persone</div>
+      <ul id="peopleList" class="list"></ul>
+    </section>
+  </main>
+
+  <!-- DEVICES -->
+  <main id="pageDevices" class="page">
+    <section class="card">
+      <div class="card-title">Telecamere</div>
+      <div class="cams">
+        <div class="cam-row">
+          <span>Interne</span>
+          <span id="camInterne" class="badge">—</span>
+        </div>
+        <div class="cam-row">
+          <span>Esterne</span>
+          <span id="camEsterne" class="badge">—</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- LOG -->
+  <main id="pageLog" class="page">
+    <section class="card">
+      <div class="card-title">Log (solo errori)</div>
+      <ul id="logErrors" class="list"></ul>
+    </section>
+  </main>
+
+  <!-- CRUSCOTTO (CORRETTO E DENTRO #app) -->
+  <main id="pageCruscotto" class="page">
+    <section class="cruscotto-grid" id="cruscottoGrid"></section>
+  </main>
+
+</div> <!-- END #app -->
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <button data-tab="home" class="nav-btn nav-active">Home</button>
+  <button data-tab="people" class="nav-btn">Persone</button>
+  <button data-tab="devices" class="nav-btn">Dispositivi</button>
+  <button data-tab="log" class="nav-btn">Log</button>
+  <button data-tab="cruscotto" class="nav-btn">Cruscotto</button>
+</nav>
+
+<div id="toast" class="toast"></div>
+
+<script src="js/app.js?v=20260222T1515"></script>
 </body>
 </html>
