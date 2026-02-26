@@ -173,7 +173,7 @@ function formatTimeOrDash(v) {
 /* Modello completo (Home) */
 function loadModel(){
   return new Promise((resolve,reject)=>{
-    window.onModel = (m)=>{ try{ MODEL=m; renderHome(m); resolve(m); }catch(e){reject(e);} };
+    window.onModel = (m)=>{ try{ MODEL=m; renderHome(m); resolve(m); renderCruscotto(m); }catch(e){reject(e);} };
     const s = document.createElement('script');
     s.src = nocache(`${ENDPOINT_URL}?callback=onModel`); s.onerror = reject;
     document.body.appendChild(s);
