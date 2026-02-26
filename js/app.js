@@ -25,7 +25,7 @@ function setBadgeState(state){
 
 function navTo(tab){
   ACTIVE_TAB = tab;
-  const map = {home:'#pageHome', people:'#pagePeople', devices:'#pageDevices', log:'#pageLog'};
+  const map = {home:'#pageHome', people:'#pagePeople', devices:'#pageDevices', log:'#pageLog', cruscotto:"#pageCruscotto"};
   $$('.page').forEach(p=>p.classList.remove('page-active'));
   $(map[tab]).classList.add('page-active');
   $$('.nav-btn').forEach(b=>b.classList.remove('nav-active'));
@@ -97,6 +97,78 @@ function loadErrors(){
     });
   }).catch(()=>{ /* ignore */ });
 }
+
+function renderCruscotto(m) {
+  const el = $("#cruscottoGrid");
+  if (!el) return;
+
+  const tiles = [
+    {
+      title: "Stato",
+      icon: "🟢",
+      value: m.state || "--"
+    },
+    {
+      title: "Presenza",
+      icon: m.presenzaEffettiva ? "🏠" : "🚪",
+      value: m.presenzaEffettiva ? "IN CASA" : "FUORI"
+    },
+    {
+      title: "Meteo",
+      icon: m.weather?.iconEmoji || "☁️",
+      value: `${m.weather?.tempC ?? "--"}°  ·  ${m.weather?.windKmh ?? "--"} km/h`
+    },
+    {
+      title: "Telecamere",
+      icon: "📷",
+      value: camsText(m)
+    },
+    {
+      title: "Alba",
+      icon: "🌅",
+      value: formatTimeOrDash(m.next?.pianteAlba)
+    },
+    {
+      title: "Tramonto",
+      icon: "🌇",
+      value: formatTimeOrDash(m.next?.piantePostClose)
+    },
+    {
+      title: "Energy",
+      icon: "⚡",
+      value: m.energy?.kwh != null ? m.energy.kwh + " kWh" : "--"
+    },
+    {
+      title: "Online",
+      icon: "👥",
+      value: `${m.people.filter(p=>p.online).length} / ${m.people.length}`
+    }
+  ];
+
+  el.innerHTML = tiles.map(t => `
+    <div class="cr-tile">
+      <div class="cr-icon">${t.icon}</div>
+      <div class="cr-title">${t.title}</div>
+      <div class="cr-value">${t.value}</div>
+    </div>
+  `).join("");
+}
+
+function camsText(m) {
+  return m.state?.startsWith("SECURITY")
+    ? "ON · ON"
+    : m.state === "COMFY_NIGHT"
+      ? "OFF · ON"
+      : "OFF · OFF";
+}
+
+function formatTimeOrDash(v) {
+  if (!v || v === "—") return "—";
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  return d.toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
+}
+
 
 /* Modello completo (Home) */
 function loadModel(){
