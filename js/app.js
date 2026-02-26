@@ -116,7 +116,7 @@ function renderCruscotto(m) {
     {
       title: "Meteo",
       icon: m.weather?.iconEmoji || "☁️",
-      value: `${m.weather?.tempC ?? "--"}°  ·  ${m.weather?.windKmh ?? "--"} km/h`
+      value: `${m.weather?.tempC ?? "--"}° · ${m.weather?.windKmh ?? "--"} km/h`
     },
     {
       title: "Telecamere",
@@ -136,7 +136,7 @@ function renderCruscotto(m) {
     {
       title: "Energy",
       icon: "⚡",
-      value: m.energy?.kwh != null ? m.energy.kwh + " kWh" : "--"
+      value: m.energy?.kwh != null ? `${m.energy.kwh} kWh` : "--"
     },
     {
       title: "Online",
@@ -152,6 +152,20 @@ function renderCruscotto(m) {
       <div class="cr-value">${t.value}</div>
     </div>
   `).join("");
+}
+
+function camsText(m) {
+  const s = String(m.state || '').toUpperCase();
+  if (s.startsWith("SECURITY")) return "ON · ON";
+  if (s === "COMFY_NIGHT") return "OFF · ON";
+  return "OFF · OFF";
+}
+
+function formatTimeOrDash(v) {
+  if (!v || v === "—") return "—";
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  return d.toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
 }
 
 function camsText(m) {
