@@ -4,124 +4,148 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
   <title>Automazione • Home</title>
-
+  <!-- No-store per evitare caching aggressiva dell'HTML -->
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <link rel="stylesheet" href="assets/style.css?v=20260222T1515">
+  <!-- CSS -->
+  <link rel="stylesheet" href="assets/style.css?v=oneconnect_patch_20260228">
 </head>
-
 <body>
-<div id="app">
-
-  <!-- Top bar -->
-  <header class="topbar">
-    <div class="title-area">
-      <h1 class="app-title">Home</h1>
-      <span id="stateBadge" class="state-badge">—</span>
-    </div>
-    <div id="weatherPill" class="weather-pill">
-      <span id="weatherIcon" class="w-ico">☀️</span>
-      <span id="weatherTemp">--°</span>
-      <span class="dot">·</span>
-      <span id="weatherWind">-- km/h</span>
-    </div>
-  </header>
-
-  <!-- People bar -->
-  <div id="peopleBar" class="people-bar" role="button" tabindex="0">
-    <span>Persone</span>
-    <span id="peopleSummary" class="people-summary">—</span>
-  </div>
-
-  <!-- HOME -->
-  <main id="pageHome" class="page page-active">
-    <section class="card energy-card">
-      <div class="card-title">Energy</div>
-      <div class="energy-value" id="energyValue">— kWh</div>
-    </section>
-
-    <section class="favorites">
-      <div class="fav-grid">
-        <button id="btnOverride" class="tile tile-md">
-          <div class="tile-ico">🛡️</div>
-          <div class="tile-txt">Override</div>
-          <div id="lblOverride" class="tile-sub">Off</div>
-        </button>
-
-        <button id="btnVacanza" class="tile tile-md">
-          <div class="tile-ico">🏖️</div>
-          <div class="tile-txt">Vacanza</div>
-          <div id="lblVacanza" class="tile-sub">Off</div>
-        </button>
-
-        <button id="btnPiante" class="tile tile-md">
-          <div class="tile-ico">🌿</div>
-          <div class="tile-txt">Piante</div>
-          <div class="tile-sub">Irriga</div>
-        </button>
-
-        <button id="btnAlza" class="tile tile-md">
-          <div class="tile-ico">🪟</div>
-          <div id="lblAlza" class="tile-txt">Alza</div>
-          <div class="tile-sub">Se clicco si abbassa</div>
-        </button>
+  <div id="app">
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="title-area">
+        <h1 class="app-title">Home</h1>
+        <span id="stateBadge" class="state-badge">—</span>
       </div>
-    </section>
-  </main>
-
-  <!-- PEOPLE -->
-  <main id="pagePeople" class="page">
-    <section class="card">
-      <div class="card-title">Persone</div>
-      <ul id="peopleList" class="list"></ul>
-    </section>
-  </main>
-
-  <!-- DEVICES -->
-  <main id="pageDevices" class="page">
-    <section class="card">
-      <div class="card-title">Telecamere</div>
-      <div class="cams">
-        <div class="cam-row">
-          <span>Interne</span>
-          <span id="camInterne" class="badge">—</span>
-        </div>
-        <div class="cam-row">
-          <span>Esterne</span>
-          <span id="camEsterne" class="badge">—</span>
-        </div>
+      <div id="weatherPill" class="weather-pill">
+        <span id="weatherIcon" class="w-ico">☀️</span>
+        <span id="weatherTemp">--°</span>
+        <span class="dot">·</span>
+        <span id="weatherWind">-- km/h</span>
       </div>
-    </section>
-  </main>
+    </header>
 
-  <!-- LOG -->
-  <main id="pageLog" class="page">
-    <section class="card">
-      <div class="card-title">Log (solo errori)</div>
-      <ul id="logErrors" class="list"></ul>
-    </section>
-  </main>
+    <!-- Barra Persone (shortcut) -->
+    <div id="peopleBar" class="people-bar" role="button" tabindex="0">
+      <span>Persone</span>
+      <span id="peopleSummary" class="people-summary">—</span>
+    </div>
 
-  <!-- CRUSCOTTO (CORRETTO E DENTRO #app) -->
-  <main id="pageCruscotto" class="page">
-    <section class="cruscotto-grid" id="cruscottoGrid"></section>
-  </main>
+    <!-- Pagina Home -->
+    <main id="pageHome" class="page page-active">
+      <section class="card energy-card">
+        <div class="card-title">Energy</div>
+        <div class="energy-value" id="energyValue">— kWh</div>
+      </section>
 
-</div> <!-- END #app -->
+      <section class="favorites">
+        <div class="fav-grid">
+          <button id="btnOverride" class="tile tile-md">
+            <div class="tile-ico">🛡️</div>
+            <div class="tile-txt">Override</div>
+            <div id="lblOverride" class="tile-sub">Off</div>
+          </button>
+          <button id="btnVacanza" class="tile tile-md">
+            <div class="tile-ico">🏖️</div>
+            <div class="tile-txt">Vacanza</div>
+            <div id="lblVacanza" class="tile-sub">Off</div>
+          </button>
+          <button id="btnPiante" class="tile tile-md">
+            <div class="tile-ico">🌿</div>
+            <div class="tile-txt">Piante</div>
+            <div class="tile-sub">Irriga</div>
+          </button>
+          <button id="btnAlza" class="tile tile-md">
+            <div class="tile-ico">🪟</div>
+            <div id="lblAlza" class="tile-txt">Alza</div>
+            <div class="tile-sub">Se clicco si abbassa</div>
+          </button>
+        </div>
+      </section>
+    </main>
 
-<!-- Bottom nav -->
-<nav class="bottom-nav">
-  <button data-tab="home" class="nav-btn nav-active">Home</button>
-  <button data-tab="people" class="nav-btn">Persone</button>
-  <button data-tab="devices" class="nav-btn">Dispositivi</button>
-  <button data-tab="log" class="nav-btn">Log</button>
-  <button data-tab="cruscotto" class="nav-btn">Cruscotto</button>
-</nav>
+    <!-- Pagina Persone -->
+    <main id="pagePeople" class="page">
+      <section class="card">
+        <div class="card-title">Persone</div>
+        <ul id="peopleList" class="list"></ul>
+      </section>
+    </main>
 
-<div id="toast" class="toast"></div>
+    <!-- Pagina Dispositivi -->
+    <main id="pageDevices" class="page">
+      <section class="card">
+        <div class="card-title">Telecamere</div>
+        <div class="cams">
+          <div class="cam-row">
+            <span>Interne</span>
+            <span id="camInterne" class="badge">—</span>
+          </div>
+          <div class="cam-row">
+            <span>Esterne</span>
+            <span id="camEsterne" class="badge">—</span>
+          </div>
+        </div>
+      </section>
+    </main>
 
-<script src="js/app.js?v=20260222T1515"></script>
+    <!-- Pagina Log -->
+    <main id="pageLog" class="page">
+      <section class="card">
+        <div class="card-title">Log (solo errori)</div>
+        <ul id="logErrors" class="list"></ul>
+      </section>
+    </main>
+
+    <!-- Pagina Cruscotto (2x2) -->
+    <main id="pageCruscotto" class="page">
+      <section class="cruscotto-grid" id="cruscottoGrid"></section>
+    </main>
+
+    <!-- Pagina Energy (patch stile SmartThings) -->
+    <main id="pageEnergy" class="page">
+      <section class="energy2-grid">
+        <div class="energy2-tile">
+          <div class="e2-icon">⚡</div>
+          <div class="e2-title">Consumo attuale</div>
+          <div id="e2Current" class="e2-value">-- kWh</div>
+        </div>
+        <div class="energy2-tile">
+          <div class="e2-icon">📅</div>
+          <div class="e2-title">Oggi</div>
+          <div id="e2Today" class="e2-value">-- kWh</div>
+        </div>
+        <div class="energy2-tile">
+          <div class="e2-icon">📊</div>
+          <div class="e2-title">Settimana</div>
+          <div id="e2Week" class="e2-value">-- kWh</div>
+        </div>
+        <div class="energy2-tile">
+          <div class="e2-icon">🔌</div>
+          <div class="e2-title">Dispositivi offline</div>
+          <div id="e2Offline" class="e2-value">--</div>
+        </div>
+      </section>
+    </main>
+
+  </div><!-- /#app -->
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button data-tab="home" class="nav-btn nav-active">Home</button>
+    <button data-tab="people" class="nav-btn">Persone</button>
+    <button data-tab="devices" class="nav-btn">Dispositivi</button>
+    <button data-tab="log" class="nav-btn">Log</button>
+    <button data-tab="cruscotto" class="nav-btn">Cruscotto</button>
+    <button data-tab="energy" class="nav-btn">Energy</button>
+  </nav>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- JS -->
+  <script src="js/app.js?v=oneconnect_patch_20260228"></script>
 </body>
 </html>
