@@ -34,36 +34,25 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.2 system-ui,
 .toast.show{opacity:1}
 
 /* === CRUSCOTTO 2x2 === */
+.cruscotto-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:14px; padding:14px 0 30px; }
+.cr-tile { background: rgba(255,255,255,0.06); border:1px solid #2b3d56; border-radius:14px; padding:18px 12px; text-align:center; color:white; box-shadow:0 0 12px rgba(0,0,0,0.2); }
+.cr-icon { font-size:28px; margin-bottom:8px; }
+.cr-title{ font-size:.85rem; opacity:.7; margin-bottom:4px; }
+.cr-value{ font-size:1rem; font-weight:600; }
 
-.cruscotto-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 14px;
-  padding: 14px 0 30px;
-}
+/* === Energy page SmartThings-like === */
+.energy2-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:16px; padding:16px 0 32px; }
+.energy2-tile { background: linear-gradient(145deg, #141b25, #0e141c); border:1px solid #2b3d56; border-radius:16px; padding:20px 14px; text-align:center; color:#eaf3ff; box-shadow:0 6px 18px rgba(0,0,0,0.3); transition: transform .15s ease; }
+.energy2-tile:hover { transform: translateY(-4px); }
+.e2-icon { font-size:32px; margin-bottom:8px; animation: pulseEnergy 2s infinite ease-in-out; }
+@keyframes pulseEnergy { 0%,100%{ opacity:1; transform:scale(1);} 50%{ opacity:.6; transform:scale(1.08);} }
+.e2-title{ font-size:.85rem; opacity:.75; margin-bottom:3px; }
+.e2-value{ font-size:1.2rem; font-weight:700; }
 
-.cr-tile {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid #2b3d56;
-  border-radius: 14px;
-  padding: 18px 12px;
-  text-align: center;
-  color: white;
-  box-shadow: 0 0 12px rgba(0,0,0,0.2);
-}
-
-.cr-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.cr-title {
-  font-size: 0.85rem;
-  opacity: 0.7;
-  margin-bottom: 4px;
-}
-
-.cr-value {
-  font-size: 1rem;
-  font-weight: 600;
-}
+/* PATCH OneConnect animations */
+.animate-pulse { animation: ocPulse 2.2s ease-in-out infinite; }
+.animate-breath{ animation: ocBreath 3.2s ease-in-out infinite; }
+.animate-spin  { animation: ocSpin 14s linear infinite; }
+@keyframes ocPulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.06);opacity:.7}}
+@keyframes ocBreath{ 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.18)}}
+@keyframes ocSpin  { from{transform:rotate(0)} to{transform:rotate(360deg)} }
