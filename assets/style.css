@@ -53,6 +53,16 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.2 system-ui,
 .people-toolbar { display:flex; justify-content:flex-end; gap:8px; margin:8px 0 0; }
 .nav-btn.small { padding:6px 10px; font-size:.85rem; border-radius:10px; }
 
+/* Pill Keepalive (KA) */
+.ka-pill {
+  margin-left:10px; padding:4px 10px; border-radius:999px;
+  border:1px solid #2b3d56; background:#1a2230; color:#cfe2ff;
+  font-size:12px; cursor:pointer;
+}
+.ka-pill.on {
+  border-color:#25c376; background:rgba(37,195,118,.15); color:#baf0d5;
+}
+
 /* Animazioni OneConnect */
 .animate-pulse { animation: ocPulse 2.2s ease-in-out infinite; }
 .animate-breath{ animation: ocBreath 3.2s ease-in-out infinite; }
