@@ -1,5 +1,5 @@
 /* Automazione UI — OneConnect v2.1 (strict life + morning hold) */
-const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbzgpinR2mH8Da9CHULvyY6Jk-kFCWuyv1fumqWcpdCi7AdElBc1Kt-CxMYa9pW-Yvqf/exec';
+const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbwRpy4xgWj7cdcGi_1gI4YjxtoIVVJIzfeKNthKIBgtidFtfNQt-wKUy-SOznFwsPZY/exec';
 let MODEL = null; let isUpGuess = true; let ACTIVE_TAB = 'home';
 const $  = (s)=> document.querySelector(s); const $$ = (s)=> Array.from(document.querySelectorAll(s));
 function toast(m){ const t=$('#toast'); t.textContent=m||''; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1700); }
