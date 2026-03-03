@@ -1,42 +1,58 @@
-/* Automazione UI — OneConnect v2.3 (strict+hold + keepalive toggle) */
+/* Automazione UI — OneConnect v2.3 (strict+hold + keepalive toggle + log retention) */
 
-// === ENDPOINT della tua WebApp ===
+/* === ENDPOINT della tua WebApp === */
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbwRpy4xgWj7cdcGi_1gI4YjxtoIVVJIzfeKNthKIBgtidFtfNQt-wKUy-SOznFwsPZY/exec';
 
 let MODEL = null;
 let isUpGuess = true;
 let ACTIVE_TAB = 'home';
 
-const $  = (s)=> document.querySelector(s);
-const $$ = (s)=> Array.from(document.querySelectorAll(s));
+/* === Helpers DOM / UI ==================================================== */
+const $  = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 function toast(m){
-  const t=$('#toast'); t.textContent=m||'';
-  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1700);
+  const t = $('#toast'); if(!t) return;
+  t.textContent = m || '';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1700);
 }
 function fmtTs(d){
   if(!d) return '—';
-  const dt=(d instanceof Date)?d:new Date(d);
+  const dt = (d instanceof Date) ? d : new Date(d);
   return new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short'}).format(dt);
 }
 function weatherEmoji(k){
   const map={sun:'☀️',few:'🌤️',part:'⛅',cloud:'☁️',fog:'🌫️',drizzle:'🌦️',rain:'🌧️',showers:'🌦️',storm:'⛈️',hail:'🌨️'};
   return map[k]||'☀️';
 }
-function nocache(u){ const sep=u.includes('?')?'&':'?'; return u+sep+'t='+Date.now(); }
+function nocache(u){
+  const sep = u.includes('?') ? '&' : '?';
+  return u + sep + 't=' + Date.now();
+}
+function toHm(v){
+  if(!v || v==='—') return '--:--';
+  const d = new Date(v); if(isNaN(d)) return '--:--';
+  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
 function setBadgeState(state){
-  const el=$('#stateBadge'); el.className='state-badge';
-  if(!state){ el.textContent='—'; return; }
-  const s=String(state).toUpperCase();
+  const el = $('#stateBadge'); if(!el) return;
+  el.className = 'state-badge';
+  if(!state){ el.textContent = '—'; return; }
+  const s = String(state).toUpperCase();
   if(s.startsWith('COMFY')) el.classList.add('ok');
   else if(s.startsWith('SECURITY')) el.classList.add('alert');
   el.textContent = s.replace('_',' ');
 }
 function navTo(tab){
   ACTIVE_TAB = tab;
-  const map={ home:'#pageHome', people:'#pagePeople', devices:'#pageDevices', log:'#pageLog', cruscotto:'#pageCruscotto', energy:'#pageEnergy', settings:'#pageSettings' };
+  const map = {
+    home:'#pageHome', people:'#pagePeople', devices:'#pageDevices',
+    log:'#pageLog', cruscotto:'#pageCruscotto', energy:'#pageEnergy',
+    settings:'#pageSettings'
+  };
   $$('.page').forEach(p=>p.classList.remove('page-active'));
-  $(map[tab]).classList.add('page-active');
+  if(map[tab]) $(map[tab]).classList.add('page-active');
   $$('.nav-btn').forEach(b=>b.classList.remove('nav-active'));
   $(`.nav-btn[data-tab="${tab}"]`)?.classList.add('nav-active');
   if(tab==='people')  loadPeople();
@@ -45,6 +61,7 @@ function navTo(tab){
   if(tab==='energy')  renderEnergyPage(MODEL);
 }
 
+/* === JSONP helpers ======================================================= */
 function callAdmin(evt, value){
   return new Promise((resolve,reject)=>{
     const cb='cb_admin_'+Math.random().toString(36).slice(2);
@@ -66,13 +83,7 @@ function jsonp(path, cbname){
   });
 }
 
-function toHm(v){
-  if(!v || v==='—') return '--:--';
-  const d=new Date(v); if(isNaN(d)) return '--:--';
-  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-}
-
-// === KEEPALIVE helpers (UI <-> endpoint) ===================================
+/* === KEEPALIVE =========================================================== */
 async function getKeepaliveStatus(name){
   try{
     const res = await jsonp(`?admin=1&event=keepalive_status&name=${encodeURIComponent(name)}`);
@@ -93,12 +104,12 @@ async function toggleKeepalive(name, wantOn){
   return null;
 }
 
-// === Persone / Cams / Log ==================================================
+/* === Persone / Cams / Log ================================================ */
 async function loadPeople(){
   try{
     const res = await jsonp('?people=1');
     const arr = (res && res.people) ? res.people : [];
-    const ul  = $('#peopleList'); ul.innerHTML='';
+    const ul  = $('#peopleList'); if(!ul) return; ul.innerHTML='';
 
     for(const p of arr){
       const li   = document.createElement('li');
@@ -117,7 +128,6 @@ async function loadPeople(){
       const pill = document.createElement('button');
       pill.className = 'ka-pill';
       pill.textContent = 'KA…';
-      // stato iniziale (async)
       try{
         const st = await getKeepaliveStatus(p.name);
         pill.classList.toggle('on', !!st.on);
@@ -143,13 +153,13 @@ function loadCams(){
   jsonp('?cams=1').then(res=>{
     const ci=$('#camInterne'), ce=$('#camEsterne');
     const iOn=!!(res&&res.interne), eOn=!!(res&&res.esterne);
-    ci.textContent=iOn?'ON':'OFF'; ci.className='badge '+(iOn?'ok':'err');
-    ce.textContent=eOn?'ON':'OFF'; ce.className='badge '+(eOn?'ok':'err');
+    if(ci){ ci.textContent=iOn?'ON':'OFF'; ci.className='badge '+(iOn?'ok':'err'); }
+    if(ce){ ce.textContent=eOn?'ON':'OFF'; ce.className='badge '+(eOn?'ok':'err'); }
   }).catch(()=>{});
 }
 function loadErrors(){
   jsonp('?logs=1').then(res=>{
-    const ul=$('#logErrors'); ul.innerHTML='';
+    const ul=$('#logErrors'); if(!ul) return; ul.innerHTML='';
     const arr=(res&&res.logs)?res.logs:[];
     if(arr.length===0){ const li=document.createElement('li'); li.textContent='Nessun errore'; ul.appendChild(li); return; }
     arr.forEach(e=>{
@@ -160,18 +170,29 @@ function loadErrors(){
   }).catch(()=>{});
 }
 
-// === Cruscotto / Energy ====================================================
+/* === Cruscotto / Energy =================================================== */
+function camsText(m){
+  const s=String(m.state||'').toUpperCase();
+  if(s.startsWith('SECURITY')) return 'ON · ON';
+  if(s==='COMFY_NIGHT') return 'OFF · ON';
+  return 'OFF · OFF';
+}
+function formatTimeOrDash(v){
+  if(!v||v==='—') return '—';
+  const d=new Date(v); if(isNaN(d)) return v;
+  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
 function renderCruscotto(m){
-  const el=$('#cruscottoGrid'); if(!el) return;
+  const el=$('#cruscottoGrid'); if(!el || !m) return;
   const tiles=[
     {key:'state',    title:'Stato',      icon:'🟢', value:m.state||'--', cls:(String(m.state||'').startsWith('SECURITY')?'animate-breath':'animate-pulse')},
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI'), cls:(m.presenzaEffettiva?'animate-pulse':'')},
-    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'☁️'), value:`${m.weather?.tempC ?? '--'}° · ${m.weather?.windKmh ?? '--'} km/h`, cls:'animate-breath'},
+    {key:'meteo',    title:'Meteo',      icon:(m.weather && m.weather.iconEmoji || '☁️'), value:`${m.weather && m.weather.tempC != null ? Math.round(m.weather.tempC) : '--'}° · ${m.weather && m.weather.windKmh != null ? Math.round(m.weather.windKmh) : '--'} km/h`, cls:'animate-breath'},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m), cls:(String(m.state||'').startsWith('SECURITY')?'animate-breath':'')},
-    {key:'alba',     title:'Alba',       icon:'🌅', value:formatTimeOrDash(m.next?.pianteAlba), cls:''},
-    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:formatTimeOrDash(m.next?.piantePostClose), cls:''},
-    {key:'energy',   title:'Energy',     icon:'⚡', value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--'), cls:'animate-pulse oc-energy'},
-    {key:'online',   title:'Online',     icon:'👥', value:`${m.people.filter(p=>p.online).length} / ${m.people.length}`, cls:''}
+    {key:'alba',     title:'Alba',       icon:'🌅', value:formatTimeOrDash(m.next && m.next.pianteAlba), cls:''},
+    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:formatTimeOrDash(m.next && m.next.piantePostClose), cls:''},
+    {key:'energy',   title:'Energy',     icon:'⚡', value:(m.energy && m.energy.kwh!=null?`${m.energy.kwh} kWh`:'--'), cls:'animate-pulse oc-energy'},
+    {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`, cls:''}
   ];
   el.innerHTML = tiles.map(t=>`
     <div class="cr-tile" data-key="${t.key}">
@@ -184,26 +205,15 @@ function renderCruscotto(m){
     if(key==='energy'){ tile.style.cursor='pointer'; tile.addEventListener('click',()=> navTo('energy')); }
   });
 }
-function camsText(m){
-  const s=String(m.state||'').toUpperCase();
-  if(s.startsWith('SECURITY')) return 'ON · ON';
-  if(s==='COMFY_NIGHT') return 'OFF · ON';
-  return 'OFF · OFF';
-}
-function formatTimeOrDash(v){
-  if(!v||v==='—') return '—';
-  const d=new Date(v); if(isNaN(d)) return v;
-  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-}
 function renderEnergyPage(m){
   if(!m) return;
-  $('#e2Current').textContent = m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'-- kWh';
-  $('#e2Today').textContent   = m.energy?.kwh!=null?`${(m.energy.kwh*0.6).toFixed(1)} kWh`:'--';
-  $('#e2Week').textContent    = m.energy?.kwh!=null?`${(m.energy.kwh*4).toFixed(1)} kWh`:'--';
-  $('#e2Offline').textContent = (m.devicesOfflineCount??'--');
+  $('#e2Current') && ($('#e2Current').textContent = (m.energy && m.energy.kwh!=null?`${m.energy.kwh} kWh`:'-- kWh'));
+  $('#e2Today')   && ($('#e2Today').textContent   = (m.energy && m.energy.kwh!=null?`${(m.energy.kwh*0.6).toFixed(1)} kWh`:'--'));
+  $('#e2Week')    && ($('#e2Week').textContent    = (m.energy && m.energy.kwh!=null?`${(m.energy.kwh*4).toFixed(1)} kWh`:'--'));
+  $('#e2Offline') && ($('#e2Offline').textContent = (m.devicesOfflineCount!=null? m.devicesOfflineCount : '--'));
 }
 
-// === MODEL loader & home ===================================================
+/* === MODEL loader & home ================================================== */
 function loadModel(){
   return new Promise((resolve,reject)=>{
     window.onModel=(m)=>{ try{ MODEL=m; renderHome(m); renderCruscotto(m); renderEnergyPage(m); resolve(m);}catch(e){reject(e);} };
@@ -212,29 +222,31 @@ function loadModel(){
   });
 }
 function renderHome(m){
-  setBadgeState(m&&m.state);
-  if(m&&m.weather){
-    $('#weatherIcon').textContent = weatherEmoji(m.weather.iconEmoji||'');
-    $('#weatherTemp').textContent = (m.weather.tempC!=null?Math.round(m.weather.tempC)+'°':'--°');
-    $('#weatherWind').textContent = (m.weather.windKmh!=null?Math.round(m.weather.windKmh)+' km/h':'-- km/h');
-    // Alba/Tramonto (pill piccola sotto meteo)
-$('#lblAlbaSmall').textContent    = toHm(m?.next?.pianteAlba);
-$('#lblTramontoSmall').textContent= toHm(m?.next?.piantePostClose); 
+  setBadgeState(m && m.state);
+  if(m && m.weather){
+    $('#weatherIcon')  && ($('#weatherIcon').textContent  = weatherEmoji(m.weather.iconEmoji||''));
+    $('#weatherTemp')  && ($('#weatherTemp').textContent  = (m.weather.tempC!=null?Math.round(m.weather.tempC)+'°':'--°'));
+    $('#weatherWind')  && ($('#weatherWind').textContent  = (m.weather.windKmh!=null?Math.round(m.weather.windKmh)+' km/h':'-- km/h'));
+    // Alba/Tramonto pill
+    $('#lblAlbaSmall')     && ($('#lblAlbaSmall').textContent     = toHm(m.next && m.next.pianteAlba));
+    $('#lblTramontoSmall') && ($('#lblTramontoSmall').textContent = toHm(m.next && m.next.piantePostClose));
   }
-  const ev=(m&&m.energy&&m.energy.kwh!=null)?m.energy.kwh:null;
-  $('#energyValue').textContent=(ev!=null?String(ev)+' kWh':'— kWh');
-  $('#lblOverride').textContent=(m&&m.override)?'On':'Off';
-  $('#lblVacanza').textContent =(m&&m.vacanza)?'On':'Off';
-  $('#btnOverride').classList.toggle('on', !!(m&&m.override));
-  $('#btnVacanza').classList.toggle('on',  !!(m&&m.vacanza));
-  const st=String(m&&m.state||'').toUpperCase(); isUpGuess=(st==='COMFY_DAY');
-  $('#lblAlza').textContent=isUpGuess?'Abbassa':'Alza';
+  const ev=(m && m.energy && m.energy.kwh!=null)?m.energy.kwh:null;
+  $('#energyValue') && ($('#energyValue').textContent=(ev!=null?String(ev)+' kWh':'— kWh'));
 
-  const ppl=(m&&m.people)?m.people:[]; const onCount=ppl.filter(p=>p.online).length;
-  $('#peopleSummary').textContent=`${onCount} online / ${ppl.length} totali`;
+  $('#lblOverride') && ($('#lblOverride').textContent=(m && m.override)?'On':'Off');
+  $('#lblVacanza')  && ($('#lblVacanza').textContent =(m && m.vacanza)?'On':'Off');
+  $('#btnOverride') && $('#btnOverride').classList.toggle('on', !!(m && m.override));
+  $('#btnVacanza')  && $('#btnVacanza').classList.toggle('on',  !!(m && m.vacanza));
+
+  const st=String(m && m.state || '').toUpperCase(); isUpGuess=(st==='COMFY_DAY');
+  $('#lblAlza') && ($('#lblAlza').textContent=isUpGuess?'Abbassa':'Alza');
+
+  const ppl=(m && m.people)?m.people:[]; const onCount=ppl.filter(p=>p.online).length;
+  $('#peopleSummary') && ($('#peopleSummary').textContent=`${onCount} online / ${ppl.length} totali`);
 }
 
-// === Strict/Hold actions ===================================================
+/* === Strict/Hold quick actions (legacy prompt) =========================== */
 async function getStrictLifeMin(){ try{ const res=await jsonp('?admin=1&event=get_strict'); if(res&&res.ok) return Number(res.strict)||0; }catch(_){} return 10; }
 async function setStrictLifeMin(){
   const cur=await getStrictLifeMin();
@@ -254,55 +266,64 @@ async function setMorningHold(){
   await loadModel();
 }
 
-// === SETTINGS: loader e salvataggi ======================================
+/* === Impostazioni: loader e salvataggi =================================== */
 async function loadSettingsPage(){
   try{
-    // carica valori correnti
-    const [rStrict, rHold, rKaAuto, rExitG, rExitC, rFlags] = await Promise.all([
+    const [rStrict, rHold, rKaAuto, rExitG, rExitC, rFlags, rRet] = await Promise.all([
       jsonp('?admin=1&event=get_strict'),
       jsonp('?admin=1&event=get_hold'),
       jsonp('?admin=1&event=get_ka_auto'),
       jsonp('?admin=1&event=get_exit_guard'),
       jsonp('?admin=1&event=get_exit_confirm'),
-      jsonp('?admin=1&event=get_flags')
+      jsonp('?admin=1&event=get_flags'),
+      jsonp('?admin=1&event=get_log_retention')
     ]);
 
-    $('#inpStrict').value      = (rStrict && rStrict.ok) ? (rStrict.strict||0) : '';
-    $('#inpHold').value        = (rHold   && rHold.ok)   ? (rHold.hold||0)     : '';
-    $('#selKaAuto').value      = (rKaAuto && rKaAuto.ok) ? String(!!rKaAuto.ka_auto) : 'true';
-    $('#inpExitGuard').value   = (rExitG  && rExitG.ok)  ? (rExitG.exit_guard||0)   : '';
-    $('#inpExitConfirm').value = (rExitC  && rExitC.ok)  ? (rExitC.exit_confirm||0) : '';
+    $('#inpStrict')      && ($('#inpStrict').value      = (rStrict && rStrict.ok) ? (rStrict.strict||0) : '');
+    $('#inpHold')        && ($('#inpHold').value        = (rHold   && rHold.ok)   ? (rHold.hold||0)     : '');
+    $('#selKaAuto')      && ($('#selKaAuto').value      = (rKaAuto && rKaAuto.ok) ? String(!!rKaAuto.ka_auto) : 'true');
+    $('#inpExitGuard')   && ($('#inpExitGuard').value   = (rExitG  && rExitG.ok)  ? (rExitG.exit_guard||0)   : '');
+    $('#inpExitConfirm') && ($('#inpExitConfirm').value = (rExitC  && rExitC.ok)  ? (rExitC.exit_confirm||0) : '');
+    $('#inpLogRetention')&& ($('#inpLogRetention').value= (rRet    && rRet.ok)    ? (rRet.days||7)           : '7');
 
-    $('#lblOverrideState').textContent = (rFlags && rFlags.ok && rFlags.override)?'ON':'OFF';
-    $('#lblVacanzaState').textContent  = (rFlags && rFlags.ok && rFlags.vacanza)?'ON':'OFF';
+    const o = !!(rFlags && rFlags.ok && rFlags.override);
+    const v = !!(rFlags && rFlags.ok && rFlags.vacanza);
+    $('#lblOverrideState') && ($('#lblOverrideState').textContent = o?'ON':'OFF');
+    $('#lblVacanzaState')  && ($('#lblVacanzaState').textContent  = v?'ON':'OFF');
+
+    // skin "strong" sui bottoni toggle della pagina
+    $('#btnToggleOverride')?.classList.add('btn-io');
+    $('#btnToggleVacanza')?.classList.add('btn-io');
+    $('#btnToggleOverride')?.classList.toggle('on', o);
+    $('#btnToggleVacanza')?.classList.toggle('on', v);
+
+    // aggiorna testo "prossime corse" irrigazione (se hai la label)
+    if($('#lblIrrNext')){
+      const a = MODEL && MODEL.next && MODEL.next.pianteAlba ? toHm(MODEL.next.pianteAlba) : '--:--';
+      const p = MODEL && MODEL.next && MODEL.next.piantePostClose ? toHm(MODEL.next.piantePostClose) : '--:--';
+      $('#lblIrrNext').textContent = `🌅 ${a} · 🌇 ${p}`;
+    }
   }catch(_){
     toast('Errore lettura impostazioni');
   }
 }
 
-// salva singolo campo numerico
 async function saveSettingNumber(evt, value){
   if(!isFinite(Number(value)) || Number(value)<0){ toast('Valore non valido'); return false; }
   const res = await callAdmin(evt, Number(value));
   return (res && res.ok);
 }
-
-// toggle boolean
 async function saveSettingBool(evt, boolValue){
-  const u = `?admin=1&event=${encodeURIComponent(evt)}&value=${boolValue?'true':'false'}`;
-  const res = await jsonp(u);
+  const res = await jsonp(`?admin=1&event=${encodeURIComponent(evt)}&value=${boolValue?'true':'false'}`);
   return (res && res.ok);
 }
 
-// === Wiring della pagina impostazioni ====================================
+/* === Wiring pagina impostazioni ========================================== */
 function wireSettings(){
-  const goSettings = async ()=>{ navTo('settings'); await loadSettingsPage(); };
-
-  // Gear in Cruscotto
   const btnGear = $('#btnOpenSettings');
-  if(btnGear){ btnGear.addEventListener('click', goSettings); }
+  if(btnGear){ btnGear.addEventListener('click', async ()=>{ navTo('settings'); await loadSettingsPage(); }); }
 
-  // Salvataggi
+  // Salvataggi numerici
   $('#btnSaveStrict')?.addEventListener('click', async ()=>{
     const ok = await saveSettingNumber('set_strict', $('#inpStrict').value);
     toast(ok?'Salvato':'Errore salvataggio'); if(ok) await loadModel();
@@ -317,78 +338,91 @@ function wireSettings(){
   });
   $('#btnSaveExitGuard')?.addEventListener('click', async ()=>{
     const ok = await saveSettingNumber('set_exit_guard', $('#inpExitGuard').value);
-    toast(ok?'Salvato':'Errore'); 
+    toast(ok?'Salvato':'Errore');
   });
   $('#btnSaveExitConfirm')?.addEventListener('click', async ()=>{
     const ok = await saveSettingNumber('set_exit_confirm', $('#inpExitConfirm').value);
-    toast(ok?'Salvato':'Errore'); 
+    toast(ok?'Salvato':'Errore');
   });
 
-  // override/vacanza toggle
+  // Log retention + purge
+  $('#btnSaveLogRetention')?.addEventListener('click', async ()=>{
+    const v = Number($('#inpLogRetention').value);
+    if(!isFinite(v) || v<=0){ toast('Valore non valido'); return; }
+    const res = await jsonp(`?admin=1&event=set_log_retention&value=${v}`);
+    toast((res && res.ok)?'Salvato':'Errore');
+  });
+  $('#btnPruneLogs')?.addEventListener('click', async ()=>{
+    const res = await jsonp(`?admin=1&event=prune_logs`);
+    toast((res && res.ok)?'Log ripuliti':'Errore purge');
+    if(ACTIVE_TAB==='log') loadErrors();
+  });
+
+  // Toggle override/vacanza (aggiornano anche la tile in Home)
   $('#btnToggleOverride')?.addEventListener('click', async ()=>{
-  try{
-    const flags1 = await jsonp('?admin=1&event=get_flags');
-    const cur = !!(flags1 && flags1.ok && flags1.override);
-    const ok = await saveSettingBool('set_override', !cur);
-    if(!ok){ toast('Errore override'); return; }
+    try{
+      const flags1 = await jsonp('?admin=1&event=get_flags');
+      const cur = !!(flags1 && flags1.ok && flags1.override);
+      const ok  = await saveSettingBool('set_override', !cur);
+      if(!ok){ toast('Errore override'); return; }
+      const flags2 = await jsonp('?admin=1&event=get_flags');
+      const nowOn  = !!(flags2 && flags2.ok && flags2.override);
+      $('#lblOverrideState') && ($('#lblOverrideState').textContent = nowOn?'ON':'OFF');
+      $('#lblOverride')      && ($('#lblOverride').textContent      = nowOn?'On':'Off');
+      $('#btnOverride')      && $('#btnOverride').classList.toggle('on', nowOn);
+      $('#btnToggleOverride')&& $('#btnToggleOverride').classList.toggle('on', nowOn);
+      toast('Override: '+(nowOn?'ON':'OFF'));
+      await loadModel();
+    }catch(_){ toast('Errore override'); }
+  });
 
-    // rileggi flags per sicurezza
-    const flags2 = await jsonp('?admin=1&event=get_flags');
-    const nowOn = !!(flags2 && flags2.ok && flags2.override);
-    $('#lblOverrideState').textContent = nowOn?'ON':'OFF';
-    // aggiorna tile Home: etichetta e classe “on”
-    $('#lblOverride')?.textContent = nowOn?'On':'Off';
-    $('#btnOverride')?.classList.toggle('on', nowOn);
+  $('#btnToggleVacanza')?.addEventListener('click', async ()=>{
+    try{
+      const flags1 = await jsonp('?admin=1&event=get_flags');
+      const cur = !!(flags1 && flags1.ok && flags1.vacanza);
+      const ok  = await saveSettingBool('set_vacanza', !cur);
+      if(!ok){ toast('Errore vacanza'); return; }
+      const flags2 = await jsonp('?admin=1&event=get_flags');
+      const nowOn  = !!(flags2 && flags2.ok && flags2.vacanza);
+      $('#lblVacanzaState') && ($('#lblVacanzaState').textContent = nowOn?'ON':'OFF');
+      $('#lblVacanza')      && ($('#lblVacanza').textContent      = nowOn?'On':'Off');
+      $('#btnVacanza')      && $('#btnVacanza').classList.toggle('on', nowOn);
+      $('#btnToggleVacanza')&& $('#btnToggleVacanza').classList.toggle('on', nowOn);
+      toast('Vacanza: '+(nowOn?'ON':'OFF'));
+      await loadModel();
+    }catch(_){ toast('Errore vacanza'); }
+  });
+}
 
-    toast('Override: '+(nowOn?'ON':'OFF'));
-    await loadModel();
-  }catch(_){ toast('Errore override'); }
-});
-
-$('#btnToggleVacanza')?.addEventListener('click', async ()=>{
-  try{
-    const flags1 = await jsonp('?admin=1&event=get_flags');
-    const cur = !!(flags1 && flags1.ok && flags1.vacanza);
-    const ok = await saveSettingBool('set_vacanza', !cur);
-    if(!ok){ toast('Errore vacanza'); return; }
-
-    const flags2 = await jsonp('?admin=1&event=get_flags');
-    const nowOn = !!(flags2 && flags2.ok && flags2.vacanza);
-    $('#lblVacanzaState').textContent = nowOn?'ON':'OFF';
-
-    // aggiorna tile Home
-    $('#lblVacanza')?.textContent = nowOn?'On':'Off';
-    $('#btnVacanza')?.classList.toggle('on', nowOn);
-
-    toast('Vacanza: '+(nowOn?'ON':'OFF'));
-    await loadModel();
-  }catch(_){ toast('Errore vacanza'); }
-});
-
-
-// === Wiring ================================================================
+/* === Wiring globale ======================================================= */
 function wire(){
   $$('.nav-btn').forEach(b=> b.addEventListener('click', ()=> navTo(b.getAttribute('data-tab')) ));
-  $('#peopleBar').addEventListener('click', ()=> navTo('people'));
+  $('#peopleBar')?.addEventListener('click', ()=> navTo('people'));
 
-  $('#btnOverride').addEventListener('click', async ()=>{
+  $('#btnOverride')?.addEventListener('click', async ()=>{
     const cur=!!(MODEL&&MODEL.override); await callAdmin('set_override', !cur);
     toast('Override: '+(!cur?'On':'Off')); await loadModel();
   });
-  $('#btnVacanza').addEventListener('click', async ()=>{
+  $('#btnVacanza')?.addEventListener('click', async ()=>{
     const cur=!!(MODEL&&MODEL.vacanza); await callAdmin('set_vacanza', !cur);
     toast('Vacanza: '+(!cur?'On':'Off')); await loadModel();
   });
-  $('#btnPiante').addEventListener('click', async ()=>{ await callAdmin('piante'); toast('Piante avviato'); });
-  $('#btnAlza').addEventListener('click', async ()=>{
-    const doDown=( $('#lblAlza').textContent==='Abbassa' );
-    if(doDown){ await callAdmin('abbassa_tutto'); toast('Abbassa tutto'); isUpGuess=false; $('#lblAlza').textContent='Alza'; }
-    else      { await callAdmin('alza_tutto');    toast('Alza tutto');    isUpGuess=true;  $('#lblAlza').textContent='Abbassa'; }
+
+  // Irrigazione manuale (per ora semplice; poi mettiamo guardie server-side)
+  $('#btnPiante')?.addEventListener('click', async ()=>{ await callAdmin('piante'); toast('Piante avviato'); });
+
+  // Alza/Abbassa tutto
+  $('#btnAlza')?.addEventListener('click', async ()=>{
+    const doDown=( $('#lblAlza') && $('#lblAlza').textContent==='Abbassa' );
+    if(doDown){ await callAdmin('abbassa_tutto'); toast('Abbassa tutto'); isUpGuess=false; $('#lblAlza') && ($('#lblAlza').textContent='Alza'); }
+    else      { await callAdmin('alza_tutto');    toast('Alza tutto');    isUpGuess=true;  $('#lblAlza') && ($('#lblAlza').textContent='Abbassa'); }
   });
 
+  // Shortcuts legacy
   const btnStrict=$('#btnStrictLife');  if(btnStrict) btnStrict.addEventListener('click', setStrictLifeMin);
   const btnHold  =$('#btnMorningHold'); if(btnHold)   btnHold.addEventListener('click', setMorningHold);
 }
+
 document.addEventListener('DOMContentLoaded', async ()=>{
   wire();
   wireSettings();
