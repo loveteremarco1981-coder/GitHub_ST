@@ -66,6 +66,12 @@ function jsonp(path, cbname){
   });
 }
 
+function toHm(v){
+  if(!v || v==='—') return '--:--';
+  const d=new Date(v); if(isNaN(d)) return '--:--';
+  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+
 // === KEEPALIVE helpers (UI <-> endpoint) ===================================
 async function getKeepaliveStatus(name){
   try{
@@ -211,6 +217,9 @@ function renderHome(m){
     $('#weatherIcon').textContent = weatherEmoji(m.weather.iconEmoji||'');
     $('#weatherTemp').textContent = (m.weather.tempC!=null?Math.round(m.weather.tempC)+'°':'--°');
     $('#weatherWind').textContent = (m.weather.windKmh!=null?Math.round(m.weather.windKmh)+' km/h':'-- km/h');
+    // Alba/Tramonto (pill piccola sotto meteo)
+$('#lblAlbaSmall').textContent    = toHm(m?.next?.pianteAlba);
+$('#lblTramontoSmall').textContent= toHm(m?.next?.piantePostClose); 
   }
   const ev=(m&&m.energy&&m.energy.kwh!=null)?m.energy.kwh:null;
   $('#energyValue').textContent=(ev!=null?String(ev)+' kWh':'— kWh');
