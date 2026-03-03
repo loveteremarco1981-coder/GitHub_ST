@@ -245,6 +245,91 @@ async function setMorningHold(){
   await loadModel();
 }
 
+// === SETTINGS: loader e salvataggi ======================================
+async function loadSettingsPage(){
+  try{
+    // carica valori correnti
+    const [rStrict, rHold, rKaAuto, rExitG, rExitC, rFlags] = await Promise.all([
+      jsonp('?admin=1&event=get_strict'),
+      jsonp('?admin=1&event=get_hold'),
+      jsonp('?admin=1&event=get_ka_auto'),
+      jsonp('?admin=1&event=get_exit_guard'),
+      jsonp('?admin=1&event=get_exit_confirm'),
+      jsonp('?admin=1&event=get_flags')
+    ]);
+
+    $('#inpStrict').value      = (rStrict && rStrict.ok) ? (rStrict.strict||0) : '';
+    $('#inpHold').value        = (rHold   && rHold.ok)   ? (rHold.hold||0)     : '';
+    $('#selKaAuto').value      = (rKaAuto && rKaAuto.ok) ? String(!!rKaAuto.ka_auto) : 'true';
+    $('#inpExitGuard').value   = (rExitG  && rExitG.ok)  ? (rExitG.exit_guard||0)   : '';
+    $('#inpExitConfirm').value = (rExitC  && rExitC.ok)  ? (rExitC.exit_confirm||0) : '';
+
+    $('#lblOverrideState').textContent = (rFlags && rFlags.ok && rFlags.override)?'ON':'OFF';
+    $('#lblVacanzaState').textContent  = (rFlags && rFlags.ok && rFlags.vacanza)?'ON':'OFF';
+  }catch(_){
+    toast('Errore lettura impostazioni');
+  }
+}
+
+// salva singolo campo numerico
+async function saveSettingNumber(evt, value){
+  if(!isFinite(Number(value)) || Number(value)<0){ toast('Valore non valido'); return false; }
+  const res = await callAdmin(evt, Number(value));
+  return (res && res.ok);
+}
+
+// toggle boolean
+async function saveSettingBool(evt, boolValue){
+  const u = `?admin=1&event=${encodeURIComponent(evt)}&value=${boolValue?'true':'false'}`;
+  const res = await jsonp(u);
+  return (res && res.ok);
+}
+
+// === Wiring della pagina impostazioni ====================================
+function wireSettings(){
+  const goSettings = async ()=>{ navTo('settings'); await loadSettingsPage(); };
+
+  // Gear in Cruscotto
+  const btnGear = $('#btnOpenSettings');
+  if(btnGear){ btnGear.addEventListener('click', goSettings); }
+
+  // Salvataggi
+  $('#btnSaveStrict')?.addEventListener('click', async ()=>{
+    const ok = await saveSettingNumber('set_strict', $('#inpStrict').value);
+    toast(ok?'Salvato':'Errore salvataggio'); if(ok) await loadModel();
+  });
+  $('#btnSaveHold')?.addEventListener('click', async ()=>{
+    const ok = await saveSettingNumber('set_hold', $('#inpHold').value);
+    toast(ok?'Salvato':'Errore salvataggio'); if(ok) await loadModel();
+  });
+  $('#btnSaveKaAuto')?.addEventListener('click', async ()=>{
+    const ok = await saveSettingBool('set_ka_auto', $('#selKaAuto').value==='true');
+    toast(ok?'Salvato':'Errore salvataggio');
+  });
+  $('#btnSaveExitGuard')?.addEventListener('click', async ()=>{
+    const ok = await saveSettingNumber('set_exit_guard', $('#inpExitGuard').value);
+    toast(ok?'Salvato':'Errore'); 
+  });
+  $('#btnSaveExitConfirm')?.addEventListener('click', async ()=>{
+    const ok = await saveSettingNumber('set_exit_confirm', $('#inpExitConfirm').value);
+    toast(ok?'Salvato':'Errore'); 
+  });
+
+  // override/vacanza toggle
+  $('#btnToggleOverride')?.addEventListener('click', async ()=>{
+    const flags = await jsonp('?admin=1&event=get_flags');
+    const cur = !!(flags && flags.ok && flags.override);
+    const ok = await saveSettingBool('set_override', !cur);
+    if(ok){ $('#lblOverrideState').textContent = (!cur?'ON':'OFF'); toast('Override: '+(!cur?'ON':'OFF')); await loadModel(); }
+  });
+  $('#btnToggleVacanza')?.addEventListener('click', async ()=>{
+    const flags = await jsonp('?admin=1&event=get_flags');
+    const cur = !!(flags && flags.ok && flags.vacanza);
+    const ok = await saveSettingBool('set_vacanza', !cur);
+    if(ok){ $('#lblVacanzaState').textContent = (!cur?'ON':'OFF'); toast('Vacanza: '+(!cur?'ON':'OFF')); await loadModel(); }
+  });
+}
+
 // === Wiring ================================================================
 function wire(){
   $$('.nav-btn').forEach(b=> b.addEventListener('click', ()=> navTo(b.getAttribute('data-tab')) ));
