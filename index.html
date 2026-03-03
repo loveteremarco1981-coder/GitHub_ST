@@ -124,6 +124,18 @@
       <button class="mini" id="btnSaveExitConfirm">Salva</button>
     </div>
 
+<div class="setting-row">
+  <label>Log retention (giorni)</label>
+  <input id="inpLogRetention" type="number" min="1" step="1" placeholder="7">
+  <button class="mini" id="btnSaveLogRetention">Salva</button>
+</div>
+
+<div class="setting-row">
+  <label>Svuota log ora</label>
+  <button class="mini btn-io" id="btnPruneLogs">Pulisci</button>
+  <span class="tag">Elimina voci più vecchie della retention</span>
+</div>
+    
     <hr class="sep">
 
     <div class="setting-row">
