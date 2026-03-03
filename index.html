@@ -69,10 +69,71 @@
       <section class="card"><div class="card-title">Log (solo errori)</div><ul id="logErrors" class="list"></ul></section>
     </main>
 
-    <main id="pageCruscotto" class="page">
-      <section class="cruscotto-grid" id="cruscottoGrid"></section>
-    </main>
+    <!-- CRUSCOTTO -->
+<main id="pageCruscotto" class="page">
+  <section class="cruscotto-grid" id="cruscottoGrid"></section>
 
+  <!-- Toolbar Cruscotto (aggiunta icona impostazioni) -->
+  <div class="cruscotto-toolbar">
+    <button id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
+  </div>
+</main>
+
+<!-- IMPOSTAZIONI -->
+<main id="pageSettings" class="page">
+  <section class="card">
+    <div class="card-title">Impostazioni</div>
+
+    <div class="setting-row">
+      <label>Strict LIFE (min)</label>
+      <input id="inpStrict" type="number" min="0" step="1" placeholder="60">
+      <button class="mini" id="btnSaveStrict">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Morning HOLD dopo alba (min)</label>
+      <input id="inpHold" type="number" min="0" step="1" placeholder="120">
+      <button class="mini" id="btnSaveHold">Salva</button>
+    </div>
+
+    <hr class="sep">
+
+    <div class="setting-row">
+      <label>KA Auto‑ON all’arrivo (08–22)</label>
+      <select id="selKaAuto">
+        <option value="true">TRUE</option>
+        <option value="false">FALSE</option>
+      </select>
+      <button class="mini" id="btnSaveKaAuto">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Exit Guard (min) — ignora USCITA se LIFE recente</label>
+      <input id="inpExitGuard" type="number" min="0" step="1" placeholder="7">
+      <button class="mini" id="btnSaveExitGuard">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Exit Confirm (min) — conferma differita dell’uscita</label>
+      <input id="inpExitConfirm" type="number" min="0" step="1" placeholder="3">
+      <button class="mini" id="btnSaveExitConfirm">Salva</button>
+    </div>
+
+    <hr class="sep">
+
+    <div class="setting-row">
+      <label>Override</label>
+      <button class="mini" id="btnToggleOverride">ON/OFF</button>
+      <span id="lblOverrideState" class="tag">—</span>
+    </div>
+
+    <div class="setting-row">
+      <label>Vacanza</label>
+      <button class="mini" id="btnToggleVacanza">ON/OFF</button>
+      <span id="lblVacanzaState" class="tag">—</span>
+    </div>
+  </section>
+</main>
     <main id="pageEnergy" class="page">
       <section class="energy2-grid">
         <div class="energy2-tile"><div class="e2-icon">⚡</div><div class="e2-title">Consumo attuale</div><div id="e2Current" class="e2-value">-- kWh</div></div>
