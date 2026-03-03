@@ -326,18 +326,45 @@ function wireSettings(){
 
   // override/vacanza toggle
   $('#btnToggleOverride')?.addEventListener('click', async ()=>{
-    const flags = await jsonp('?admin=1&event=get_flags');
-    const cur = !!(flags && flags.ok && flags.override);
+  try{
+    const flags1 = await jsonp('?admin=1&event=get_flags');
+    const cur = !!(flags1 && flags1.ok && flags1.override);
     const ok = await saveSettingBool('set_override', !cur);
-    if(ok){ $('#lblOverrideState').textContent = (!cur?'ON':'OFF'); toast('Override: '+(!cur?'ON':'OFF')); await loadModel(); }
-  });
-  $('#btnToggleVacanza')?.addEventListener('click', async ()=>{
-    const flags = await jsonp('?admin=1&event=get_flags');
-    const cur = !!(flags && flags.ok && flags.vacanza);
+    if(!ok){ toast('Errore override'); return; }
+
+    // rileggi flags per sicurezza
+    const flags2 = await jsonp('?admin=1&event=get_flags');
+    const nowOn = !!(flags2 && flags2.ok && flags2.override);
+    $('#lblOverrideState').textContent = nowOn?'ON':'OFF';
+    // aggiorna tile Home: etichetta e classe “on”
+    $('#lblOverride')?.textContent = nowOn?'On':'Off';
+    $('#btnOverride')?.classList.toggle('on', nowOn);
+
+    toast('Override: '+(nowOn?'ON':'OFF'));
+    await loadModel();
+  }catch(_){ toast('Errore override'); }
+});
+
+$('#btnToggleVacanza')?.addEventListener('click', async ()=>{
+  try{
+    const flags1 = await jsonp('?admin=1&event=get_flags');
+    const cur = !!(flags1 && flags1.ok && flags1.vacanza);
     const ok = await saveSettingBool('set_vacanza', !cur);
-    if(ok){ $('#lblVacanzaState').textContent = (!cur?'ON':'OFF'); toast('Vacanza: '+(!cur?'ON':'OFF')); await loadModel(); }
-  });
-}
+    if(!ok){ toast('Errore vacanza'); return; }
+
+    const flags2 = await jsonp('?admin=1&event=get_flags');
+    const nowOn = !!(flags2 && flags2.ok && flags2.vacanza);
+    $('#lblVacanzaState').textContent = nowOn?'ON':'OFF';
+
+    // aggiorna tile Home
+    $('#lblVacanza')?.textContent = nowOn?'On':'Off';
+    $('#btnVacanza')?.classList.toggle('on', nowOn);
+
+    toast('Vacanza: '+(nowOn?'ON':'OFF'));
+    await loadModel();
+  }catch(_){ toast('Errore vacanza'); }
+});
+
 
 // === Wiring ================================================================
 function wire(){
