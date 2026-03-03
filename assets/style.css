@@ -70,3 +70,18 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.2 system-ui,
 @keyframes ocPulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.06);opacity:.7}}
 @keyframes ocBreath{ 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.18)}}
 @keyframes ocSpin  { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+.cruscotto-toolbar{ display:flex; justify-content:flex-end; gap:8px; margin:12px 0 0; }
+.setting-row{
+  display:flex; align-items:center; gap:10px; margin:10px 0;
+}
+.setting-row label{ flex:1; color:#cfe2ff; }
+.setting-row input, .setting-row select{
+  background:#0f141d; border:1px solid #1e2736; border-radius:8px; color:#e7eef7;
+  padding:6px 8px; min-width:90px;
+}
+.setting-row .mini{
+  background:#12233b; border:1px solid #294163; border-radius:8px; color:#fff; padding:6px 10px;
+}
+.sep{ border:0; border-top:1px solid #233046; margin:12px 0; }
+.tag{ font-size:12px; color:#9fb0c3; }
