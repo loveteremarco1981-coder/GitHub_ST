@@ -34,7 +34,7 @@ function setBadgeState(state){
 }
 function navTo(tab){
   ACTIVE_TAB = tab;
-  const map={ home:'#pageHome', people:'#pagePeople', devices:'#pageDevices', log:'#pageLog', cruscotto:'#pageCruscotto', energy:'#pageEnergy' };
+  const map={ home:'#pageHome', people:'#pagePeople', devices:'#pageDevices', log:'#pageLog', cruscotto:'#pageCruscotto', energy:'#pageEnergy', settings:'#pageSettings' };
   $$('.page').forEach(p=>p.classList.remove('page-active'));
   $(map[tab]).classList.add('page-active');
   $$('.nav-btn').forEach(b=>b.classList.remove('nav-active'));
@@ -355,6 +355,7 @@ function wire(){
 }
 document.addEventListener('DOMContentLoaded', async ()=>{
   wire();
+  wireSettings();
   try{ await loadModel(); }catch(e){ toast('Errore caricamento modello'); console.error(e); }
   // auto-refresh ogni 2 minuti
   setInterval(async ()=>{
