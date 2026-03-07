@@ -26,8 +26,6 @@
         <span class="dot">·</span>
         <span id="weatherWind">-- km/h</span>
       </div>
-
-      
     </header>
 
     <div id="peopleBar" class="people-bar" role="button" tabindex="0" aria-label="Apri Persone">
@@ -105,7 +103,6 @@
     <!-- CRUSCOTTO -->
     <main id="pageCruscotto" class="page" aria-labelledby="crusc-title">
       <section class="cruscotto-grid" id="cruscottoGrid"></section>
-
       <div class="cruscotto-toolbar">
         <button type="button" id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
       </div>
@@ -166,6 +163,39 @@
 
         <hr class="sep"/>
 
+        <!-- ====== NUOVI MICRO-TUNING ====== -->
+        <div class="setting-row">
+          <label for="inpLifeTimeout">LIFE Timeout (min)</label>
+          <input id="inpLifeTimeout" type="number" min="0" step="1" placeholder="60"/>
+          <button type="button" class="mini" id="btnSaveLifeTimeout">Salva</button>
+        </div>
+
+        <div class="setting-row">
+          <label for="inpDebIn">Debounce IN (min)</label>
+          <input id="inpDebIn" type="number" min="0" step="1" placeholder="2"/>
+          <button type="button" class="mini" id="btnSaveDebIn">Salva</button>
+        </div>
+
+        <div class="setting-row">
+          <label for="inpDebOut">Debounce OUT (min)</label>
+          <input id="inpDebOut" type="number" min="0" step="1" placeholder="0"/>
+          <button type="button" class="mini" id="btnSaveDebOut">Salva</button>
+        </div>
+
+        <div class="setting-row">
+          <label for="inpEmptyGrace">Grace diurna casa vuota (min)</label>
+          <input id="inpEmptyGrace" type="number" min="0" step="1" placeholder="8"/>
+          <button type="button" class="mini" id="btnSaveEmptyGrace">Salva</button>
+        </div>
+
+        <div class="setting-row">
+          <label for="inpPianteMin">PIANTE — intervallo minimo (min)</label>
+          <input id="inpPianteMin" type="number" min="10" step="5" placeholder="60"/>
+          <button type="button" class="mini" id="btnSavePianteMin">Salva</button>
+        </div>
+
+        <hr class="sep"/>
+
         <div class="setting-row">
           <label>Override</label>
           <button type="button" class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
@@ -214,8 +244,64 @@
     <button type="button" data-tab="log"       class="nav-btn">Log</button>
     <button type="button" data-tab="cruscotto" class="nav-btn">Cruscotto</button>
     <button type="button" data-tab="energy"    class="nav-btn">Energy</button>
+  </nav>
 
   <!-- JS in coda -->
+  <!-- 1) Wrapper endpoint (lo hai messo in root) -->
+  <script src="api.js"></script>
+
+  <!-- 2) App generale (la tua esistente) -->
   <script src="js/app.js?v=oc_v2_3"></script>
+
+  <!-- 3) Binding minimo per i nuovi micro-tuning -->
+  <script>
+    // piccolo helper
+    function toast(msg){ try{ console.log(msg); }catch(_){ alert(msg); } }
+
+    async function loadSettingsExtra(){
+      try{
+        const [lt, di, dox, eg, pm] = await Promise.all([
+          api.getLifeTimeout(),
+          api.getDebounceIn(),
+          api.getDebounceOut(),
+          api.getEmptyGrace(),
+          api.getPianteMinInt(),
+        ]);
+        if(lt && lt.ok)  document.getElementById('inpLifeTimeout').value = lt.life_timeout;
+        if(di && di.ok)  document.getElementById('inpDebIn').value       = di.debounce_in;
+        if(dox&& dox.ok) document.getElementById('inpDebOut').value      = dox.debounce_out;
+        if(eg && eg.ok)  document.getElementById('inpEmptyGrace').value  = eg.empty_grace;
+        if(pm && pm.ok)  document.getElementById('inpPianteMin').value   = pm.min;
+      }catch(e){ console.error('loadSettingsExtra', e); }
+    }
+    function bindSettingsExtra(){
+      document.getElementById('btnSaveLifeTimeout').onclick = async ()=>{
+        const v = +document.getElementById('inpLifeTimeout').value;
+        const res = await api.setLifeTimeout(v); toast(res.ok?'Salvato':'Errore');
+      };
+      document.getElementById('btnSaveDebIn').onclick = async ()=>{
+        const v = +document.getElementById('inpDebIn').value;
+        const res = await api.setDebounceIn(v); toast(res.ok?'Salvato':'Errore');
+      };
+      document.getElementById('btnSaveDebOut').onclick = async ()=>{
+        const v = +document.getElementById('inpDebOut').value;
+        const res = await api.setDebounceOut(v); toast(res.ok?'Salvato':'Errore');
+      };
+      document.getElementById('btnSaveEmptyGrace').onclick = async ()=>{
+        const v = +document.getElementById('inpEmptyGrace').value;
+        const res = await api.setEmptyGrace(v); toast(res.ok?'Salvato':'Errore');
+      };
+      document.getElementById('btnSavePianteMin').onclick = async ()=>{
+        const v = +document.getElementById('inpPianteMin').value;
+        const res = await api.setPianteMinInt(v); toast(res.ok?'Salvato':'Errore');
+      };
+    }
+
+    // Avvio
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      bindSettingsExtra();
+      await loadSettingsExtra();
+    });
+  </script>
 </body>
 </html>
