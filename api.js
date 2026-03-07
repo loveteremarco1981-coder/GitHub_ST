@@ -1,6 +1,6 @@
 <script>
 /** api.js – wrapper endpoint GoAppSync (fetch + fallback JSONP) */
-const EXEC_URL = 'https://script.google.com/macros/s/<IL_TUO_EXEC>/exec';
+const EXEC_URL = 'https://script.google.com/macros/s/AKfycbwRpy4xgWj7cdcGi_1gI4YjxtoIVVJIzfeKNthKIBgtidFtfNQt-wKUy-SOznFwsPZY/exec';
 
 async function apiFetch(event, params = {}) {
   const usp = new URLSearchParams({ admin: '1', event, ...params });
