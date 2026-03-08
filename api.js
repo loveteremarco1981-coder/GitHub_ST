@@ -1,5 +1,9 @@
 /** ======================================================================
  * api.js — Wrapper per GoAppSync WebApp (v2.3.1)
+ * - window.EXEC_URL globale (visibile anche a app.js)
+ * - Fetch + fallback JSONP
+ * - Wrappers endpoint (get/set/diag/KA)
+ * - Handler UI per Test + Diagnostica Rapida con stato, toast, refresh
  * ====================================================================== */
 
 /* 1) URL globale, visibile anche a app.js */
@@ -17,7 +21,7 @@ async function apiFetch(event, params = {}) {
     if (!ct.includes('application/json')) { try { return JSON.parse(txt); } catch(_) { throw new Error('Non-JSON'); } }
     return JSON.parse(txt);
   } catch (err) {
-    // JSONP
+    // --- JSONP ---
     const cbName = `cb_${event}_${Date.now()}`;
     return new Promise((resolve, reject) => {
       const urlJsonp = `${url}&callback=${cbName}`;
@@ -36,76 +40,119 @@ async function apiFetch(event, params = {}) {
 const api = {
   version: () => apiFetch('version'),
 
+  // Base settings
   getStrict: () => apiFetch('get_strict'),
   setStrict: (value) => apiFetch('set_strict', { value }),
-
-  getHold: () => apiFetch('get_hold'),
-  setHold: (value) => apiFetch('set_hold', { value }),
-
+  getHold:   () => apiFetch('get_hold'),
+  setHold:   (value) => apiFetch('set_hold', { value }),
   getKaAuto: () => apiFetch('get_ka_auto'),
   setKaAuto: (valueBool) => apiFetch('set_ka_auto', { value: String(!!valueBool).toUpperCase() }),
-
   getExitGuard:   () => apiFetch('get_exit_guard'),
   setExitGuard:   (value) => apiFetch('set_exit_guard', { value }),
   getExitConfirm: () => apiFetch('get_exit_confirm'),
   setExitConfirm: (value) => apiFetch('set_exit_confirm', { value }),
-
   getLogRetention: () => apiFetch('get_log_retention'),
   setLogRetention: (days) => apiFetch('set_log_retention', { value: days }),
-  pruneLogs: () => apiFetch('prune_logs'),
+  pruneLogs:       () => apiFetch('prune_logs'),
 
-  // micro‑tuning
-  getLifeTimeout: () => apiFetch('get_life_timeout'),
-  setLifeTimeout: (value) => apiFetch('set_life_timeout', { value }),
-  getDebounceIn:  () => apiFetch('get_debounce_in'),
-  setDebounceIn:  (value) => apiFetch('set_debounce_in', { value }),
-  getDebounceOut: () => apiFetch('get_debounce_out'),
-  setDebounceOut: (value) => apiFetch('set_debounce_out', { value }),
-  getEmptyGrace:  () => apiFetch('get_empty_grace'),
-  setEmptyGrace:  (value) => apiFetch('set_empty_grace', { value }),
-  getPianteMinInt:() => apiFetch('get_piante_min_interval'),
-  setPianteMinInt:(value) => apiFetch('set_piante_min_interval', { value }),
+  // Micro‑tuning
+  getLifeTimeout:  () => apiFetch('get_life_timeout'),
+  setLifeTimeout:  (value) => apiFetch('set_life_timeout', { value }),
+  getDebounceIn:   () => apiFetch('get_debounce_in'),
+  setDebounceIn:   (value) => apiFetch('set_debounce_in', { value }),
+  getDebounceOut:  () => apiFetch('get_debounce_out'),
+  setDebounceOut:  (value) => apiFetch('set_debounce_out', { value }),
+  getEmptyGrace:   () => apiFetch('get_empty_grace'),
+  setEmptyGrace:   (value) => apiFetch('set_empty_grace', { value }),
+  getPianteMinInt: () => apiFetch('get_piante_min_interval'),
+  setPianteMinInt: (value) => apiFetch('set_piante_min_interval', { value }),
 
-  // diagnostica
+  // Diagnostica
   fullTest: () => apiFetch('diag_full_test'),
   quick: (op, params={}) => apiFetch('diag_quick', { op, ...params }),
 
-  // KA
+  // KeepAlive
   keepaliveStatus: (name) => apiFetch('keepalive_status', { name }),
-  keepaliveOn: (name, minutes=30) => apiFetch('keepalive_on', { name, minutes }),
-  keepaliveOff: (name) => apiFetch('keepalive_off', { name }),
+  keepaliveOn:     (name, minutes=30) => apiFetch('keepalive_on', { name, minutes }),
+  keepaliveOff:    (name) => apiFetch('keepalive_off', { name }),
 };
 
-/* 4) Helpers UI minimo per Test + Diagnostica Rapida */
+/* 4) Helpers UI */
 function setStatus(id, text, ok=true){
   const el = document.getElementById(id); if(!el) return;
   el.textContent = text || '';
   el.style.color = ok ? '#7bd88f' : '#ff6b6b';
 }
+function toast(msg){ try{ console.log(msg); }catch(_){ /* no-op */ } }
 
+/* 5) Runner Diagnostica Rapida con feedback */
+async function runQuick(op, params={}, btnId=null, statusId='testStatus'){
+  if (statusId) setStatus(statusId, `Esecuzione: ${op}…`, true);
+  const btn = btnId ? document.getElementById(btnId) : null;
+  if (btn) btn.disabled = true;
+
+  try{
+    const res = await api.quick(op, params);
+    if(res && res.ok){
+      const msgMap = {
+        list:          'Lista trigger → Log',
+        'ka_on':       `KA ON ${params?.name||''} (${params?.minutes||''}m)`,
+        'ka_off':      `KA OFF ${params?.name||''}`,
+        'all_out':     'Tutti OUT (pendenti)',
+        'all_in':      'Tutti IN (poke_life)',
+        'verify_grace':'Verifica grace eseguita',
+        snap:          'Snapshot → Log'
+      };
+      if (statusId) setStatus(statusId, (msgMap[op] || 'OK') + ' ✓', true);
+      toast(msgMap[op] || 'OK');
+
+      // Aggiorna cruscotto su operazioni “di stato”
+      if (['all_out','all_in','verify_grace','snap'].includes(op)){
+        try{ window.dispatchEvent(new Event('refreshDashboard')); }catch(_){}
+      }
+    }else{
+      if (statusId) setStatus(statusId, 'Errore: '+(res && res.error ? res.error : 'unknown'), false);
+      toast('Errore: '+(res && res.error ? res.error : 'unknown'));
+    }
+  }catch(e){
+    if (statusId) setStatus(statusId, 'Errore rete: '+e.message, false);
+    toast('Errore rete: '+e.message);
+  }finally{
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* 6) Bind UI dopo DOM ready */
 window.addEventListener('DOMContentLoaded', ()=>{
-  // Bottone "🧪 Test"
+  // 🧪 Test completo
   const runBtn = document.getElementById('btnRunFullTest');
   if (runBtn){
     runBtn.addEventListener('click', async ()=>{
-      setStatus('testStatus','Esecuzione test…', true);
+      setStatus('testStatus','Esecuzione test completo…', true);
       runBtn.disabled = true;
       try{
         const res = await api.fullTest();
-        if(res && res.ok){ setStatus('testStatus','OK — apri Log ✓', true); window.dispatchEvent(new Event('refreshDashboard')); }
-        else { setStatus('testStatus','Errore: '+(res?.error||'unknown'), false); }
-      }catch(e){ setStatus('testStatus','Errore rete: '+e.message, false); }
-      runBtn.disabled = false;
+        if(res && res.ok){
+          setStatus('testStatus','OK — apri Log ✓', true);
+          try{ window.dispatchEvent(new Event('refreshDashboard')); }catch(_){}
+        }else{
+          setStatus('testStatus','Errore test: '+(res?.error||'unknown'), false);
+        }
+      }catch(e){
+        setStatus('testStatus','Errore rete: '+e.message, false);
+      }finally{
+        runBtn.disabled = false;
+      }
     });
   }
 
-  // Diagnostica Rapida (se presenti i pulsanti)
+  // === Diagnostica Rapida ===
   const $ = (id)=>document.getElementById(id);
-  if ($('btnDiagList'))    $('btnDiagList').onclick    = async ()=>{ const r=await api.quick('list');          console.log(r); };
-  if ($('btnKaOnMarco'))   $('btnKaOnMarco').onclick   = async ()=>{ const r=await api.quick('ka_on',{name:'marco',minutes:5}); console.log(r); };
-  if ($('btnKaOffMarco'))  $('btnKaOffMarco').onclick  = async ()=>{ const r=await api.quick('ka_off',{name:'marco'}); console.log(r); };
-  if ($('btnAllOut'))      $('btnAllOut').onclick      = async ()=>{ const r=await api.quick('all_out');       console.log(r); };
-  if ($('btnAllIn'))       $('btnAllIn').onclick       = async ()=>{ const r=await api.quick('all_in');        console.log(r); };
-  if ($('btnVerifyGrace')) $('btnVerifyGrace').onclick = async ()=>{ const r=await api.quick('verify_grace');  console.log(r); };
-  if ($('btnSnap'))        $('btnSnap').onclick        = async ()=>{ const r=await api.quick('snap');          console.log(r); };
+  if ($('btnDiagList'))      $('btnDiagList').onclick      = ()=> runQuick('list', {}, 'btnDiagList');
+  if ($('btnKaOnMarco'))     $('btnKaOnMarco').onclick     = ()=> runQuick('ka_on',  { name:'marco', minutes:5 }, 'btnKaOnMarco');
+  if ($('btnKaOffMarco'))    $('btnKaOffMarco').onclick    = ()=> runQuick('ka_off', { name:'marco' }, 'btnKaOffMarco');
+  if ($('btnAllOut'))        $('btnAllOut').onclick        = ()=> runQuick('all_out', {}, 'btnAllOut');
+  if ($('btnAllIn'))         $('btnAllIn').onclick         = ()=> runQuick('all_in',  {}, 'btnAllIn');
+  if ($('btnVerifyGrace'))   $('btnVerifyGrace').onclick   = ()=> runQuick('verify_grace', {}, 'btnVerifyGrace');
+  if ($('btnSnap'))          $('btnSnap').onclick          = ()=> runQuick('snap', {}, 'btnSnap');
 });
