@@ -158,13 +158,13 @@
 
       <div class="setting-row">
         <label>Strict LIFE</label>
-        <input id="inpStrict" type="number" min="0"/>
+        <input id="inpStrict" type="number"/>
         <button class="mini" id="btnSaveStrict">Salva</button>
       </div>
 
       <div class="setting-row">
         <label>Morning HOLD</label>
-        <input id="inpHold" type="number" min="0"/>
+        <input id="inpHold" type="number"/>
         <button class="mini" id="btnSaveHold">Salva</button>
       </div>
 
@@ -181,13 +181,13 @@
 
       <div class="setting-row">
         <label>Exit Guard</label>
-        <input id="inpExitGuard" type="number" min="0"/>
+        <input id="inpExitGuard" type="number"/>
         <button class="mini" id="btnSaveExitGuard">Salva</button>
       </div>
 
       <div class="setting-row">
         <label>Exit Confirm</label>
-        <input id="inpExitConfirm" type="number" min="0"/>
+        <input id="inpExitConfirm" type="number"/>
         <button class="mini" id="btnSaveExitConfirm">Salva</button>
       </div>
 
@@ -195,44 +195,44 @@
 
       <div class="setting-row">
         <label>Log retention</label>
-        <input id="inpLogRetention" type="number" min="1"/>
+        <input id="inpLogRetention" type="number"/>
         <button class="mini" id="btnSaveLogRetention">Salva</button>
       </div>
 
       <div class="setting-row">
         <label>Pulisci log</label>
-        <button class="mini btn-io" id="btnPruneLogs">Pulisci</button>
+        <button class="mini" id="btnPruneLogs">Pulisci</button>
       </div>
 
       <hr class="sep"/>
 
       <div class="setting-row">
         <label>LIFE Timeout</label>
-        <input id="inpLifeTimeout" type="number" min="0"/>
+        <input id="inpLifeTimeout" type="number"/>
         <button class="mini" id="btnSaveLifeTimeout">Salva</button>
       </div>
 
       <div class="setting-row">
         <label>Debounce IN</label>
-        <input id="inpDebIn" type="number" min="0"/>
+        <input id="inpDebIn" type="number"/>
         <button class="mini" id="btnSaveDebIn">Salva</button>
       </div>
 
       <div class="setting-row">
         <label>Debounce OUT</label>
-        <input id="inpDebOut" type="number" min="0"/>
+        <input id="inpDebOut" type="number"/>
         <button class="mini" id="btnSaveDebOut">Salva</button>
       </div>
 
       <div class="setting-row">
         <label>Grace diurna</label>
-        <input id="inpEmptyGrace" type="number" min="0"/>
+        <input id="inpEmptyGrace" type="number"/>
         <button class="mini" id="btnSaveEmptyGrace">Salva</button>
       </div>
 
       <div class="setting-row">
         <label>Piante: intervallo minimo</label>
-        <input id="inpPianteMin" type="number" min="10" step="5"/>
+        <input id="inpPianteMin" type="number"/>
         <button class="mini" id="btnSavePianteMin">Salva</button>
       </div>
 
@@ -240,11 +240,63 @@
 
       <div class="setting-row">
         <label>Override</label>
-        <button class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
+        <button class="mini" id="btnToggleOverride">ON/OFF</button>
         <span id="lblOverrideState" class="tag">—</span>
       </div>
 
       <div class="setting-row">
         <label>Vacanza</label>
-        <button class="mini btn-io" id="btnToggleVacanza">ON
+        <button class="mini" id="btnToggleVacanza">ON/OFF</button>
+        <span id="lblVacanzaState" class="tag">—</span>
+      </div>
 
+    </section>
+  </main>
+
+  <!-- ================= ENERGY ================= -->
+  <main id="pageEnergy" class="page">
+    <section class="energy2-grid">
+      <div class="energy2-tile">
+        <div class="e2-icon">⚡</div>
+        <div class="e2-title">Consumo attuale</div>
+        <div id="e2Current" class="e2-value">-- kWh</div>
+      </div>
+
+      <div class="energy2-tile">
+        <div class="e2-icon">📅</div>
+        <div class="e2-title">Oggi</div>
+        <div id="e2Today" class="e2-value">-- kWh</div>
+      </div>
+
+      <div class="energy2-tile">
+        <div class="e2-icon">📊</div>
+        <div class="e2-title">Settimana</div>
+        <div id="e2Week" class="e2-value">-- kWh</div>
+      </div>
+
+      <div class="energy2-tile">
+        <div class="e2-icon">🔌</div>
+        <div class="e2-title">Dispositivi offline</div>
+        <div id="e2Offline" class="e2-value">--</div>
+      </div>
+    </section>
+  </main>
+
+</div><!-- /app -->
+
+<!-- ================= NAV BOTTOM ================= -->
+<nav class="bottom-nav">
+  <button data-tab="home"      class="nav-btn nav-active">Home</button>
+  <button data-tab="people"    class="nav-btn">Persone</button>
+  <button data-tab="devices"   class="nav-btn">Dispositivi</button>
+  <button data-tab="log"       class="nav-btn">Log</button>
+  <button data-tab="cruscotto" class="nav-btn">Cruscotto</button>
+  <button data-tab="energy"    class="nav-btn">Energy</button>
+</nav>
+
+<!-- ================= JS CORRETTI ================= -->
+<script src="api.js"></script>
+<script src="js/app.js?v=oc_v2_3"></script>
+
+</body>
+</html>
