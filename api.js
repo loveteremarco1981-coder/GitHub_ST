@@ -47,9 +47,8 @@ const api = {
 };
 
 function setStatus(id,text,ok=true){ const el=document.getElementById(id); if(!el) return; el.textContent=text||''; el.style.color=ok?'#7bd88f':'#ff6b6b'; }
-function toast(m){ try{ console.log(m); }catch(_){ } }
 
-async function runQuick(op, params={}, btnId=null, statusId='testStatus'){
+async function runQuick(op, params={}, btnId=null, statusId='diagStatus'){
   if(statusId) setStatus(statusId,`Esecuzione: ${op}…`,true);
   const btn = btnId?document.getElementById(btnId):null;
   if(btn) btn.disabled = true;
@@ -70,9 +69,13 @@ async function runQuick(op, params={}, btnId=null, statusId='testStatus'){
 }
 
 window.addEventListener('DOMContentLoaded', ()=>{
-  const openTests=document.getElementById('btnOpenTests');
-  if(openTests){ openTests.onclick=()=>{ try{ window.navTo('tests'); }catch(_){ } try{ window.refreshTestsPage(true); }catch(_){ } }; }
+  // Apri pagina Test
+  document.getElementById('btnOpenTests')?.addEventListener('click', ()=>{
+    try{ window.navTo('tests'); }catch(_){}
+    try{ window.refreshTestsPage && window.refreshTestsPage(true); }catch(_){}
+  });
 
+  // Test completo (in alto nella pagina Test)
   const fullTop=document.getElementById('btnRunFullTestTop');
   if(fullTop){
     fullTop.onclick=async ()=>{
@@ -87,16 +90,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     };
   }
 
-  const $ = id=>document.getElementById(id);
-  $('btnDiagList')   && ($('btnDiagList').onclick   = ()=>runQuick('list',{},'btnDiagList'));
-  $('btnKaOnMarco')  && ($('btnKaOnMarco').onclick  = ()=>runQuick('ka_on',{name:'marco',minutes:5},'btnKaOnMarco'));
-  $('btnKaOffMarco') && ($('btnKaOffMarco').onclick = ()=>runQuick('ka_off',{name:'marco'},'btnKaOffMarco'));
-  $('btnAllOut')     && ($('btnAllOut').onclick     = ()=>runQuick('all_out',{},'btnAllOut'));
-  $('btnAllIn')      && ($('btnAllIn').onclick      = ()=>runQuick('all_in',{},'btnAllIn'));
-  $('btnVerifyGrace')&& ($('btnVerifyGrace').onclick= ()=>runQuick('verify_grace',{},'btnVerifyGrace'));
-  $('btnSnap')       && ($('btnSnap').onclick       = ()=>runQuick('snap',{},'btnSnap'));
-
-  // Replica handlers nella pagina Test
+  // **SOLO** pulsanti “Diagnostica Rapida” della pagina Test
   const k=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onclick=fn; };
   k('tQuickList',()=>runQuick('list',{},'tQuickList','diagStatus'));
   k('tKaOn',()=>runQuick('ka_on',{name:'marco',minutes:5},'tKaOn','diagStatus'));
@@ -106,9 +100,8 @@ window.addEventListener('DOMContentLoaded', ()=>{
   k('tVerifyGrace',()=>runQuick('verify_grace',{},'tVerifyGrace','diagStatus'));
   k('tSnap',()=>runQuick('snap',{},'tSnap','diagStatus'));
 
-  const back=document.getElementById('btnBackToCrusc');
-  if(back) back.onclick=()=>{ try{ window.navTo('cruscotto'); }catch(_){ } };
-
-  const ref=document.getElementById('btnRefreshReport');
-  if(ref) ref.onclick=()=>{ try{ window.refreshTestsPage(true); }catch(_){ } };
+  // Torna al Cruscotto
+  document.getElementById('btnBackToCrusc')?.addEventListener('click', ()=>{ try{ window.navTo('cruscotto'); }catch(_){ } });
+  // Aggiorna report
+  document.getElementById('btnRefreshReport')?.addEventListener('click', ()=>{ try{ window.refreshTestsPage(true); }catch(_){ } });
 });
