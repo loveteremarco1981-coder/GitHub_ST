@@ -1,15 +1,11 @@
 /** ======================================================================
  * api.js — Wrapper per GoAppSync WebApp (v2.3.1)
- * - window.EXEC_URL globale (visibile anche a app.js)
- * - Fetch + fallback JSONP
- * - Wrappers endpoint (get/set/diag/KA)
- * - Handler UI per Test + Diagnostica Rapida con stato, toast, refresh
  * ====================================================================== */
 
-/* 1) URL globale, visibile anche a app.js */
+/* URL globale (visibile anche a app.js) */
 window.EXEC_URL = 'https://script.google.com/macros/s/AKfycbwRpy4xgWj7cdcGi_1gI4YjxtoIVVJIzfeKNthKIBgtidFtfNQt-wKUy-SOznFwsPZY/exec';
 
-/* 2) Fetch + JSONP fallback */
+/* Fetch + JSONP fallback */
 async function apiFetch(event, params = {}) {
   const usp = new URLSearchParams({ admin: '1', event, ...params });
   const url = `${window.EXEC_URL}?${usp.toString()}`;
@@ -21,7 +17,6 @@ async function apiFetch(event, params = {}) {
     if (!ct.includes('application/json')) { try { return JSON.parse(txt); } catch(_) { throw new Error('Non-JSON'); } }
     return JSON.parse(txt);
   } catch (err) {
-    // --- JSONP ---
     const cbName = `cb_${event}_${Date.now()}`;
     return new Promise((resolve, reject) => {
       const urlJsonp = `${url}&callback=${cbName}`;
@@ -36,11 +31,10 @@ async function apiFetch(event, params = {}) {
   }
 }
 
-/* 3) API wrappers (usati da app.js) */
+/* API wrappers */
 const api = {
   version: () => apiFetch('version'),
 
-  // Base settings
   getStrict: () => apiFetch('get_strict'),
   setStrict: (value) => apiFetch('set_strict', { value }),
   getHold:   () => apiFetch('get_hold'),
@@ -53,9 +47,8 @@ const api = {
   setExitConfirm: (value) => apiFetch('set_exit_confirm', { value }),
   getLogRetention: () => apiFetch('get_log_retention'),
   setLogRetention: (days) => apiFetch('set_log_retention', { value: days }),
-  pruneLogs:       () => apiFetch('prune_logs'),
+  pruneLogs: () => apiFetch('prune_logs'),
 
-  // Micro‑tuning
   getLifeTimeout:  () => apiFetch('get_life_timeout'),
   setLifeTimeout:  (value) => apiFetch('set_life_timeout', { value }),
   getDebounceIn:   () => apiFetch('get_debounce_in'),
@@ -77,15 +70,15 @@ const api = {
   keepaliveOff:    (name) => apiFetch('keepalive_off', { name }),
 };
 
-/* 4) Helpers UI */
+/* Helpers UI */
 function setStatus(id, text, ok=true){
   const el = document.getElementById(id); if(!el) return;
   el.textContent = text || '';
   el.style.color = ok ? '#7bd88f' : '#ff6b6b';
 }
-function toast(msg){ try{ console.log(msg); }catch(_){ /* no-op */ } }
+function toast(msg){ try{ console.log(msg); }catch(_){ } }
 
-/* 5) Runner Diagnostica Rapida con feedback */
+/* Runner Diagnostica Rapida con feedback */
 async function runQuick(op, params={}, btnId=null, statusId='testStatus'){
   if (statusId) setStatus(statusId, `Esecuzione: ${op}…`, true);
   const btn = btnId ? document.getElementById(btnId) : null;
@@ -106,7 +99,6 @@ async function runQuick(op, params={}, btnId=null, statusId='testStatus'){
       if (statusId) setStatus(statusId, (msgMap[op] || 'OK') + ' ✓', true);
       toast(msgMap[op] || 'OK');
 
-      // Aggiorna cruscotto su operazioni “di stato”
       if (['all_out','all_in','verify_grace','snap'].includes(op)){
         try{ window.dispatchEvent(new Event('refreshDashboard')); }catch(_){}
       }
@@ -122,31 +114,41 @@ async function runQuick(op, params={}, btnId=null, statusId='testStatus'){
   }
 }
 
-/* 6) Bind UI dopo DOM ready */
+/* Bind UI dopo DOM ready */
 window.addEventListener('DOMContentLoaded', ()=>{
-  // 🧪 Test completo
-  const runBtn = document.getElementById('btnRunFullTest');
-  if (runBtn){
-    runBtn.addEventListener('click', async ()=>{
-      setStatus('testStatus','Esecuzione test completo…', true);
-      runBtn.disabled = true;
+  // Cruscotto → apri sotto‑pagina Test
+  const openTests = document.getElementById('btnOpenTests');
+  if (openTests){
+    openTests.addEventListener('click', ()=>{
+      try{ window.navTo && window.navTo('tests'); }catch(_){}
+      try{ window.refreshTestsPage && window.refreshTestsPage(); }catch(_){}
+    });
+  }
+
+  // Test completo nella pagina Test
+  const fullTop = document.getElementById('btnRunFullTestTop');
+  if (fullTop){
+    fullTop.addEventListener('click', async ()=>{
+      setStatus('testSuiteStatusTop','Esecuzione test completo…', true);
+      fullTop.disabled = true;
       try{
         const res = await api.fullTest();
         if(res && res.ok){
-          setStatus('testStatus','OK — apri Log ✓', true);
+          setStatus('testSuiteStatusTop','OK — apri Log ✓', true);
           try{ window.dispatchEvent(new Event('refreshDashboard')); }catch(_){}
+          try{ window.refreshTestsPage && window.refreshTestsPage(); }catch(_){}
         }else{
-          setStatus('testStatus','Errore test: '+(res?.error||'unknown'), false);
+          setStatus('testSuiteStatusTop','Errore test: '+(res?.error||'unknown'), false);
         }
       }catch(e){
-        setStatus('testStatus','Errore rete: '+e.message, false);
+        setStatus('testSuiteStatusTop','Errore rete: '+e.message, false);
       }finally{
-        runBtn.disabled = false;
+        fullTop.disabled = false;
       }
     });
   }
 
-  // === Diagnostica Rapida ===
+  // Diagnostica Rapida (Cruscotto)
   const $ = (id)=>document.getElementById(id);
   if ($('btnDiagList'))      $('btnDiagList').onclick      = ()=> runQuick('list', {}, 'btnDiagList');
   if ($('btnKaOnMarco'))     $('btnKaOnMarco').onclick     = ()=> runQuick('ka_on',  { name:'marco', minutes:5 }, 'btnKaOnMarco');
@@ -155,4 +157,21 @@ window.addEventListener('DOMContentLoaded', ()=>{
   if ($('btnAllIn'))         $('btnAllIn').onclick         = ()=> runQuick('all_in',  {}, 'btnAllIn');
   if ($('btnVerifyGrace'))   $('btnVerifyGrace').onclick   = ()=> runQuick('verify_grace', {}, 'btnVerifyGrace');
   if ($('btnSnap'))          $('btnSnap').onclick          = ()=> runQuick('snap', {}, 'btnSnap');
+
+  // Diagnostica Rapida (pagina Test)
+  if (document.getElementById('tQuickList'))   document.getElementById('tQuickList').onclick   = ()=> runQuick('list', {}, 'tQuickList','diagStatus');
+  if (document.getElementById('tKaOn'))        document.getElementById('tKaOn').onclick        = ()=> runQuick('ka_on',{name:'marco',minutes:5},'tKaOn','diagStatus');
+  if (document.getElementById('tKaOff'))       document.getElementById('tKaOff').onclick       = ()=> runQuick('ka_off',{name:'marco'},'tKaOff','diagStatus');
+  if (document.getElementById('tAllIn'))       document.getElementById('tAllIn').onclick       = ()=> runQuick('all_in',{},'tAllIn','diagStatus');
+  if (document.getElementById('tAllOut'))      document.getElementById('tAllOut').onclick      = ()=> runQuick('all_out',{},'tAllOut','diagStatus');
+  if (document.getElementById('tVerifyGrace')) document.getElementById('tVerifyGrace').onclick = ()=> runQuick('verify_grace',{},'tVerifyGrace','diagStatus');
+  if (document.getElementById('tSnap'))        document.getElementById('tSnap').onclick        = ()=> runQuick('snap',{},'tSnap','diagStatus');
+
+  // Torna al Cruscotto
+  const back = document.getElementById('btnBackToCrusc');
+  if (back){ back.onclick = ()=>{ try{ window.navTo && window.navTo('cruscotto'); }catch(_){} }; }
+
+  // Aggiorna report
+  const btnRef = document.getElementById('btnRefreshReport');
+  if (btnRef){ btnRef.onclick = ()=>{ try{ window.refreshTestsPage && window.refreshTestsPage(true); }catch(_){} }; }
 });
