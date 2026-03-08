@@ -10,9 +10,10 @@
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <link rel="stylesheet" href="assets/style.css?v=oc_v2_3">
+  assets/style.css?v=oc_v2_3
+
+  <!-- Stili locali pagina Test -->
   <style>
-    /* Mini stile locale solo per pagina Test (coerente con tema scuro) */
     .tests-grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media (min-width:960px){.tests-grid{grid-template-columns:1fr 1fr}}
     .card{background:rgba(255,255,255,0.04);border-radius:12px;padding:14px}
@@ -22,6 +23,7 @@
     .nav-btn.small:hover{background:#26323d}
     .tag{margin-left:8px;font-size:.9rem;opacity:.9}
 
+    /* Issue 48 donut */
     .donut-wrap{display:flex;align-items:center;gap:16px}
     .donut{--color:#7bd88f;width:110px;height:110px;border-radius:50%;
            background:conic-gradient(var(--color) var(--pct,0%), #2a3440 0);
@@ -30,20 +32,25 @@
     .donut .lbl{font-size:12px;color:#a7b3bf}
     .donut.bad{--color:#ff6b6b}
 
+    /* Issue list */
     .issues-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
     .issue-row{display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.2);
                border:1px solid rgba(255,255,255,.06); border-radius:10px;padding:8px 10px}
     .issue-id{font-weight:600;letter-spacing:.2px}
     .issue-meta{display:flex;align-items:center;gap:10px;color:#a7b3bf}
+
     .badge{padding:.2rem .5rem;border-radius:999px;font-size:.8rem}
     .badge.ok{background:#163a2a;color:#7bd88f}
     .badge.err{background:#3a1b1b;color:#ff6b6b}
     .badge.warn{background:#3a3416;color:#ffd166}
+
     .tests-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
     .mini{padding:.35rem .7rem;border-radius:10px;background:#1f2a33;color:#e8eef4;border:1px solid rgba(255,255,255,.1)}
     .mini:hover{background:#26323d}
+
     .ka-switch{display:flex;gap:6px}
     .ka-switch .mini{min-width:46px;text-align:center}
+
     .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
   </style>
 </head>
@@ -65,6 +72,7 @@
     </div>
   </header>
 
+  <!-- PEOPLE BAR -->
   <div id="peopleBar" class="people-bar" role="button">
     <span>Persone</span>
     <span id="peopleSummary" class="people-summary">—</span>
@@ -147,16 +155,7 @@
       <span id="testStatus" class="tag"></span>
     </div>
 
-   
-   <section class="card" style="margin-top:12px">
-      <div class="card-title">Diagnostica Rapida</div>
-      <div class="setting-row"><label>Lista trigger → Log</label><button type="button" class="mini" id="btnDiagList">Esegui</button></div>
-      <div class="setting-row"><label>KA ON (5 min) Marco</label><button type="button" class="mini" id="btnKaOnMarco">ON</button><button type="button" class="mini" id="btnKaOffMarco">OFF</button></div>
-      <div class="setting-row"><label>Tutti OUT (guard+confirm)</label><button type="button" class="mini" id="btnAllOut">Esegui</button></div>
-      <div class="setting-row"><label>Tutti IN (poke_life)</label><button type="button" class="mini" id="btnAllIn">Esegui</button></div>
-      <div class="setting-row"><label>Verifica grace ora</label><button type="button" class="mini" id="btnVerifyGrace">Esegui</button></div>
-      <div class="setting-row"><label>Snapshot stato → Log</label><button type="button" class="mini" id="btnSnap">Esegui</button></div>
-    </section>
+    <!-- ⛔️ RIMOSSA la “Diagnostica Rapida” dal Cruscotto -->
   </main>
 
   <!-- TESTS (sotto‑pagina) -->
@@ -175,17 +174,20 @@
           <div>Versione backend</div>
           <div><span id="backendVersion" class="badge">—</span></div>
         </div>
+
+        <!-- QUI stanno i test rapidi (SOLO in questa pagina) -->
         <div class="tests-actions">
-          <button type="button" class="mini" id="tQuickList">Lista trigger</button>
+          <button class="mini" id="tQuickList">Lista trigger</button>
           <div class="ka-switch">
-            <button type="button" class="mini" id="tKaOn">KA ON 5m</button>
-            <button type="button" class="mini" id="tKaOff">KA OFF</button>
+            <button class="mini" id="tKaOn">KA ON 5m</button>
+            <button class="mini" id="tKaOff">KA OFF</button>
           </div>
-          <button type="button" class="mini" id="tAllIn">Tutti IN</button>
-          <button type="button" class="mini" id="tAllOut">Tutti OUT</button>
-          <button type="button" class="mini" id="tVerifyGrace">Verifica grace</button>
-          <button type="button" class="mini" id="tSnap">Snapshot</button>
+          <button class="mini" id="tAllIn">Tutti IN</button>
+          <button class="mini" id="tAllOut">Tutti OUT</button>
+          <button class="mini" id="tVerifyGrace">Verifica grace</button>
+          <button class="mini" id="tSnap">Snapshot</button>
         </div>
+
         <div class="row"><div>Stato test rapido</div><span id="diagStatus" class="tag"></span></div>
       </div>
 
@@ -203,11 +205,22 @@
     </section>
   </main>
 
-  <!-- SETTINGS -->
-<!--  … la tua sezione settings ed energy qui sopra sono già incluse … -->
+  <!-- SETTINGS ed ENERGY restano invariati -->
+  <main id="pageSettings" class="page">
+    <section class="card"><div class="card-title">Impostazioni</div>
+      <!-- … (le tue righe impostazioni) … -->
+    </section>
+  </main>
+
+  <main id="pageEnergy" class="page">
+    <section class="energy2-grid">
+      <!-- … (le tue tile energy) … -->
+    </section>
+  </main>
 
 </div><!-- /app -->
 
+<!-- NAV BOTTOM -->
 <nav class="bottom-nav">
   <button data-tab="home"      class="nav-btn nav-active">Home</button>
   <button data-tab="people"    class="nav-btn">Persone</button>
@@ -217,8 +230,8 @@
   <button data-tab="energy"    class="nav-btn">Energy</button>
 </nav>
 
-<!-- ================= JS CORRETTI ================= -->
-<script src="api.js?v=20260308"></script>
-<script src="js/app.js?v=oc_v2_3"></script>
+<!-- JS in coda (ordine fondamentale) -->
+api.js?v=20260308</script>
+js/app.js?v=oc_v2_3</script>
 </body>
 </html>
