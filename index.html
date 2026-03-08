@@ -101,14 +101,52 @@
     </main>
 
     <!-- CRUSCOTTO -->
-    <main id="pageCruscotto" class="page" aria-labelledby="crusc-title">
-      <section class="cruscotto-grid" id="cruscottoGrid"></section>
-      <div class="cruscotto-toolbar">
-      <button type="button" id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
-      <button type="button" id="btnRunFullTest"  class="nav-btn small">🧪 Test</button>
-      </div>
-    </main>
+<main id="pageCruscotto" class="page" aria-labelledby="crusc-title">
+  <section class="cruscotto-grid" id="cruscottoGrid"></section>
 
+  <div class="cruscotto-toolbar">
+    <button type="button" id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
+    <button type="button" id="btnRunFullTest"  class="nav-btn small">🧪 Test</button>
+    <span id="testStatus" class="tag" aria-live="polite"></span>
+  </div>
+
+  <!-- (Opzionale) mini-card Diagnostica Rapida accanto a Impostazioni -->
+  <section class="card" style="margin-top:12px">
+    <div class="card-title">Diagnostica Rapida</div>
+    <div class="setting-row">
+      <label>Lista trigger → Log</label>
+      <button type="button" class="mini" id="btnDiagList">Esegui</button>
+    </div>
+    <div class="setting-row">
+      <label>KA ON (5 min) Marco</label>
+      <button type="button" class="mini" id="btnKaOnMarco">ON</button>
+      <button type="button" class="mini" id="btnKaOffMarco">OFF</button>
+    </div>
+    <div class="setting-row">
+      <label>All OUT (pendenti guard/confirm)</label>
+      <button type="button" class="mini" id="btnAllOut">Esegui</button>
+    </div>
+    <div class="setting-row">
+      <label>All IN (poke_life a tutti)</label>
+      <button type="button" class="mini" id="btnAllIn">Esegui</button>
+    </div>
+    <div class="setting-row">
+      <label>Verifica grace ora</label>
+      <button type="button" class="mini" id="btnVerifyGrace">Esegui</button>
+    </div>
+    <div class="setting-row">
+      <label>Snapshot stato → Log</label>
+      <button type="button" class="mini" id="btnSnap">Esegui</button>
+    </div>
+  </section>
+</main>
+
+<!-- JS in coda -->
+<!-- 1) Wrapper endpoint (in root) -->
+<script src="api.js"></script>
+
+<!-- 2) App generale (la tua) -->
+<script src="js/app.js?v=oc_v2_3"></script>
     <!-- IMPOSTAZIONI -->
     <main id="pageSettings" class="page" aria-labelledby="settings-title">
       <section class="card">
