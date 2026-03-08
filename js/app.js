@@ -27,6 +27,29 @@ function setBadgeState(state){
   else if(s.startsWith('SECUR')) el.classList.add('alert');
   el.textContent = s.replace('_',' ');
 }
+
+function timeOnly(v){
+  if(!v || v==='—') return '—';
+  if (v instanceof Date && !isNaN(v)) {
+    return v.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  }
+  const s = String(v).trim();
+
+  // 1) match esplicito HH:MM o HH.MM
+  let m = s.match(/(\d{1,2})[:.](\d{2})/);
+  if (m) return (m[1].padStart(2,'0') + ':' + m[2]);
+
+  // 2) tenta parse Date (ISO o formati standard)
+  const d = new Date(s);
+  if(!isNaN(d)) return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+
+  // 3) tenta dd/mm/yyyy hh:mm (IT)
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/);
+  if (m) return (m[4].padStart(2,'0') + ':' + m[5]);
+
+  return '—';
+}
+
 function fmtTs(d){
   if(!d) return '—';
   const dt = (d instanceof Date) ? d : new Date(d);
