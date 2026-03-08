@@ -1,31 +1,29 @@
 /* =======================================================================
- * Automazione UI — OneConnect v2.3 (ottimizzato + auto-refresh)
- * - Usa api.js per gli endpoint admin (get/set/diagnostica/KA)
- * - JSONP solo per il MODEL (endpoint pubblico)
- * - Auto-refresh: timer, visibilitychange, online, evento "refreshDashboard"
- * - Retry con backoff se il MODEL fallisce
+ * Automazione UI — OneConnect v2.3 (ottimizzato + Tests subpage)
+ * - Usa api.js per endpoint admin
+ * - JSONP solo per MODEL (pubblico)
+ * - Auto-refresh: timer, visibilitychange, online, refreshDashboard
+ * - Sotto‑pagina "Tests" con report Issue 48 (conteggio problemi da Log)
  * ======================================================================= */
 
 'use strict';
 
-/* ----------------------- Stato globale ----------------------- */
 let MODEL = null;
 let ACTIVE_TAB = 'home';
-let isUpGuess = true;                 // ipotesi UI per Alza/Abbassa
+let isUpGuess = true;
 let REFRESH_TIMER = null;
-let LAST_REFRESH_OK = false;
 
-/* ----------------------- Helpers DOM/UI ---------------------- */
+/* -------------------- Helpers DOM/UI -------------------- */
 const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
-function toast(msg){ try{ console.log(msg); }catch(_){ /* no-op */ } }
+function toast(msg){ try{ console.log(msg); }catch(_){ } }
 function setBadgeState(state){
   const el = $('#stateBadge'); if(!el) return;
   el.className = 'state-badge';
   if(!state){ el.textContent = '—'; return; }
   const s = String(state).toUpperCase();
-  if(s.startsWith('COMFY'))    el.classList.add('ok');
+  if(s.startsWith('COMFY')) el.classList.add('ok');
   else if(s.startsWith('SECUR')) el.classList.add('alert');
   el.textContent = s.replace('_',' ');
 }
@@ -40,39 +38,32 @@ function toHm(v){
   const d = new Date(v); if(isNaN(d)) return '--:--';
   return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
 }
-function weatherEmoji(k){
-  const map={sun:'☀️',few:'🌤️',part:'⛅',cloud:'☁️',fog:'🌫️',drizzle:'🌦️',rain:'🌧️',showers:'🌦️',storm:'⛈️',hail:'🌨️'};
-  return map[k]||'☀️';
-}
 
-/* -------------------- Navigazione/tabs ----------------------- */
+/* -------------------- Navigazione ----------------------- */
 function navTo(tab){
   ACTIVE_TAB = tab;
   const map = {
     home:'#pageHome', people:'#pagePeople', devices:'#pageDevices',
     log:'#pageLog', cruscotto:'#pageCruscotto', energy:'#pageEnergy',
-    settings:'#pageSettings'
+    settings:'#pageSettings', tests:'#pageTests'
   };
   $$('.page').forEach(p=>p.classList.remove('page-active'));
   if(map[tab]) $(map[tab]).classList.add('page-active');
   $$('.nav-btn').forEach(b=>b.classList.remove('nav-active'));
   $(`.nav-btn[data-tab="${tab}"]`)?.classList.add('nav-active');
 
-  // carichi incrementali
   if(tab==='people')  loadPeople();
   if(tab==='devices') loadCams();
   if(tab==='log')     loadErrors();
   if(tab==='energy')  renderEnergyPage(MODEL);
   if(tab==='settings') loadSettingsPage();
+  if(tab==='tests')   refreshTestsPage(true);
 }
+window.navTo = navTo; // esposto per api.js
 
-/* -------------------- JSONP MODEL (pubblico) ---------------- */
+/* -------------------- JSONP MODEL (pubblico) ------------ */
 function jsonpModel(path=''){
-  const base = window.EXEC_URL; // <-- viene da api.js (window.EXEC_URL)
-  if(!base){
-    console.error('EXEC_URL non definito (api.js deve essere incluso PRIMA di app.js)');
-    return Promise.reject(new Error('EXEC_URL missing'));
-  }
+  const base = window.EXEC_URL;
   return new Promise((resolve,reject)=>{
     try{
       const cb   = 'cb_model_' + Math.random().toString(36).slice(2);
@@ -87,43 +78,33 @@ function jsonpModel(path=''){
   });
 }
 
-/* ---------------------- Loader del MODEL --------------------- */
+/* -------------------- MODEL loader ---------------------- */
 async function fetchModelOnce(){
-  const m = await jsonpModel(); // chiama EXEC_URL?callback=...
-  if(!m || typeof m !== 'object') throw new Error('MODEL vuoto');
+  const m = await jsonpModel();
+  if(!m || typeof m!=='object') throw new Error('MODEL vuoto');
   MODEL = m;
-  LAST_REFRESH_OK = true;
   renderHome(MODEL);
   renderCruscotto(MODEL);
   renderEnergyPage(MODEL);
   return MODEL;
 }
-
-/* Retry con backoff: 0s, 2s, 5s */
 async function loadModelWithRetry(){
   const delays = [0, 2000, 5000];
-  let lastErr = null;
-  for (let i=0; i<delays.length; i++){
+  for (let i=0;i<delays.length;i++){
     try{
       if(delays[i]) await new Promise(r=>setTimeout(r, delays[i]));
-      await fetchModelOnce();
-      return true; // ok
-    }catch(e){
-      lastErr = e;
-      LAST_REFRESH_OK = false;
-      console.warn('MODEL retry', i+1, e?.message||e);
-    }
+      await fetchModelOnce(); return true;
+    }catch(e){ if(i===delays.length-1) console.error('MODEL failed', e); }
   }
-  console.error('MODEL failed:', lastErr?.message||lastErr);
   return false;
 }
 
-/* ---------------------- Rendering: HOME ---------------------- */
+/* -------------------- Rendering: HOME ------------------- */
 function renderHome(m){
   setBadgeState(m && m.state);
 
   if(m && m.weather){
-    $('#weatherIcon') && ($('#weatherIcon').textContent = weatherEmoji(m.weather.iconEmoji||''));
+    $('#weatherIcon') && ($('#weatherIcon').textContent = (m.weather.iconEmoji||'☁️'));
     $('#weatherTemp') && ($('#weatherTemp').textContent = (m.weather.tempC!=null?Math.round(m.weather.tempC)+'°':'--°'));
     $('#weatherWind') && ($('#weatherWind').textContent = (m.weather.windKmh!=null?Math.round(m.weather.windKmh)+' km/h':'-- km/h'));
   }
@@ -144,7 +125,7 @@ function renderHome(m){
   $('#peopleSummary') && ($('#peopleSummary').textContent = `${onCount} online / ${ppl.length} totali`);
 }
 
-/* ---------------------- Rendering: Cruscotto ----------------- */
+/* -------------------- Rendering: Cruscotto --------------- */
 function camsText(m){
   const s=String(m?.state||'').toUpperCase();
   if(s.startsWith('SECURITY')) return 'ON · ON';
@@ -180,7 +161,7 @@ function renderCruscotto(m){
   });
 }
 
-/* ---------------------- Rendering: Energy -------------------- */
+/* -------------------- Rendering: Energy ------------------- */
 function renderEnergyPage(m){
   if(!m) return;
   $('#e2Current') && ($('#e2Current').textContent = (m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'-- kWh'));
@@ -189,7 +170,7 @@ function renderEnergyPage(m){
   $('#e2Offline') && ($('#e2Offline').textContent = (m.devicesOfflineCount!=null? m.devicesOfflineCount : '--'));
 }
 
-/* ---------------------- Persone / Cams / Log ----------------- */
+/* -------------------- Persone / Cams / Log ---------------- */
 async function loadPeople(){
   try{
     const res = await jsonpModel('?people=1');
@@ -209,7 +190,7 @@ async function loadPeople(){
       badge.textContent = isOn ? 'Online' : 'Offline';
       right.appendChild(badge);
 
-      // KeepAlive pill
+      // KeepAlive pill (usa api.js)
       const pill = document.createElement('button');
       pill.className = 'ka-pill';
       pill.textContent = 'KA…';
@@ -217,7 +198,7 @@ async function loadPeople(){
         const st = await api.keepaliveStatus(p.name);
         pill.classList.toggle('on', !!st.on);
         pill.textContent = 'KA ' + (st.on ? (`ON ${st.minutes||30}m`) : 'OFF');
-      }catch(_){ /* ignore */ }
+      }catch(_){ }
       pill.addEventListener('click', async ()=>{
         const wantOn = !pill.classList.contains('on');
         let ok = null;
@@ -227,8 +208,6 @@ async function loadPeople(){
           pill.classList.toggle('on', wantOn);
           pill.textContent = 'KA ' + (wantOn ? 'ON 30m' : 'OFF');
           toast(`KeepAlive ${p.name}: `+(wantOn?'ON':'OFF'));
-        }else{
-          toast('Errore keepalive');
         }
       });
 
@@ -238,7 +217,6 @@ async function loadPeople(){
     }
   }catch(_){}
 }
-
 async function loadCams(){
   try{
     const res = await jsonpModel('?cams=1');
@@ -263,7 +241,97 @@ async function loadErrors(){
   }catch(_){}
 }
 
-/* ---------------------- Impostazioni ------------------------- */
+/* -------------------- Sotto‑pagina TEST: Issue 48 --------- */
+/** Classifica log in: PASS/FAIL/WARN/ERR */
+function classifyLogCode(code){
+  const c = String(code||'');
+  if (c.startsWith('TEST_PASS')) return 'PASS';
+  if (c.startsWith('TEST_SKIP')) return 'SKIP';
+  if (c.startsWith('TEST_FAIL')) return 'FAIL';
+  if (c.indexOf('_ERR')>=0 || c.startsWith('ERROR_')) return 'ERR';
+  if (c.endsWith('_BLOCK') || c.endsWith('_IGNORED')) return 'WARN';
+  return ''; // neutro
+}
+function renderIssuesReport(logs){
+  const issues = [];
+  const rows = logs||[];
+
+  rows.forEach((r,idx)=>{
+    const typ = classifyLogCode(r.code);
+    if (typ==='FAIL' || typ==='ERR'){
+      issues.push({
+        id: (r.code||'ISSUE') + '-' + (rows.length-idx), // ID sintetico
+        code: r.code||'',
+        desc: r.desc||'',
+        ts: r.ts
+      });
+    }
+  });
+
+  // donut
+  const donut = $('#issueDonut');
+  const numEl = donut?.querySelector('.num');
+  const lblEl = donut?.querySelector('.lbl');
+  const cnt = issues.length;
+  if(donut){
+    donut.style.setProperty('--pct', cnt>0 ? '100%' : '0%');
+    donut.classList.toggle('bad', cnt>0);
+    if(numEl) numEl.textContent = String(cnt);
+    if(lblEl) lblEl.textContent = 'issues';
+  }
+
+  // summary text
+  const sum = $('#issueSummary');
+  if(sum){
+    if(cnt===0) sum.textContent = 'Nessun problema rilevato negli ultimi log';
+    else sum.textContent = `${cnt} problemi trovati negli ultimi log`;
+  }
+
+  // list
+  const ul = $('#issuesList'); if(!ul) return;
+  ul.innerHTML = '';
+  if(cnt===0){
+    const li = document.createElement('li');
+    li.className = 'issue-row';
+    li.innerHTML = `<div class="issue-id">Tutto OK</div><span class="badge ok">Passed</span>`;
+    ul.appendChild(li);
+    return;
+  }
+  // mostra al massimo 12 righe (quelle più recenti che sono issues)
+  issues.slice(0,12).forEach(it=>{
+    const li = document.createElement('li');
+    li.className = 'issue-row';
+    const when = fmtTs(it.ts);
+    const sevBadge = (it.code.startsWith('TEST_FAIL') ? '<span class="badge err">Failed</span>'
+                      : it.code.indexOf('_ERR')>=0 || it.code.startsWith('ERROR_') ? '<span class="badge err">Error</span>'
+                      : '<span class="badge warn">Warn</span>');
+    li.innerHTML = `
+      <div class="issue-id">${it.id}</div>
+      <div class="issue-meta">
+        <span>${it.code}</span>
+        ${sevBadge}
+        <span class="sub">${when}</span>
+      </div>`;
+    ul.appendChild(li);
+  });
+}
+async function refreshTestsPage(force=false){
+  // versione backend
+  try{
+    const v = await api.version();
+    if(v?.ok && $('#backendVersion')) $('#backendVersion').textContent = v.version || '—';
+  }catch(_){}
+
+  // log → report
+  try{
+    const res = await jsonpModel('?logs=1');
+    const logs = (res?.logs)||[];
+    renderIssuesReport(logs);
+  }catch(e){ console.error(e); }
+}
+window.refreshTestsPage = refreshTestsPage;
+
+/* -------------------- Impostazioni (carica/salva) --------- */
 async function loadSettingsPage(){
   try{
     const [rStrict, rHold, rKaAuto, rExitG, rExitC, rFlags, rRet,
@@ -311,11 +379,10 @@ async function saveBool(evt, b){
   return !!(res?.ok);
 }
 
-/* ---------------------- Wiring Impostazioni ------------------ */
+/* -------------------- Wiring Impostazioni ------------------ */
 function wireSettings(){
   $('#btnOpenSettings')?.addEventListener('click', ()=>{ navTo('settings'); });
 
-  // base
   $('#btnSaveStrict')?.addEventListener('click', async ()=>{
     const ok = await saveNumber('set_strict', $('#inpStrict').value); toast(ok?'Salvato':'Errore'); if(ok) refreshNow();
   });
@@ -360,28 +427,23 @@ function wireSettings(){
 
   // override / vacanza
   $('#btnToggleOverride')?.addEventListener('click', async ()=>{
-    try{
-      const f1 = await apiFetch('get_flags'); const cur = !!(f1?.ok && f1.override);
-      const ok = await saveBool('set_override', !cur); if(!ok){ toast('Errore override'); return; }
-      refreshNow();
-    }catch(_){ toast('Errore override'); }
+    try{ const f1 = await apiFetch('get_flags'); const cur = !!(f1?.ok && f1.override);
+         const ok = await saveBool('set_override', !cur); if(!ok){ toast('Errore override'); return; }
+         refreshNow(); }catch(_){ toast('Errore override'); }
   });
   $('#btnToggleVacanza')?.addEventListener('click', async ()=>{
-    try{
-      const f1 = await apiFetch('get_flags'); const cur = !!(f1?.ok && f1.vacanza);
-      const ok = await saveBool('set_vacanza', !cur); if(!ok){ toast('Errore vacanza'); return; }
-      refreshNow();
-    }catch(_){ toast('Errore vacanza'); }
+    try{ const f1 = await apiFetch('get_flags'); const cur = !!(f1?.ok && f1.vacanza);
+         const ok = await saveBool('set_vacanza', !cur); if(!ok){ toast('Errore vacanza'); return; }
+         refreshNow(); }catch(_){ toast('Errore vacanza'); }
   });
 }
 
-/* ---------------------- Wiring globale ----------------------- */
+/* -------------------- Wiring globale ---------------------- */
 function wire(){
-  // Tabs
   $$('.nav-btn').forEach(b => b.addEventListener('click', () => navTo(b.getAttribute('data-tab')) ));
   $('#peopleBar')?.addEventListener('click', () => navTo('people'));
 
-  // Tiles home
+  // Tiles Home
   $('#btnOverride')?.addEventListener('click', async ()=>{
     const f1 = await apiFetch('get_flags'); const cur = !!(f1?.ok && f1.override);
     await saveBool('set_override', !cur); toast('Override: '+(!cur?'On':'Off')); refreshNow();
@@ -400,36 +462,24 @@ function wire(){
   });
 }
 
-/* ---------------------- AUTO-REFRESH ------------------------- */
+/* -------------------- Auto‑refresh ------------------------ */
 async function refreshNow(){
   await loadModelWithRetry();
-
-  // ricarichi incrementali in base alla tab corrente
   if(ACTIVE_TAB==='people')  loadPeople();
   if(ACTIVE_TAB==='devices') loadCams();
   if(ACTIVE_TAB==='log')     loadErrors();
   if(ACTIVE_TAB==='energy')  renderEnergyPage(MODEL);
+  if(ACTIVE_TAB==='tests')   refreshTestsPage();
 }
 
-/* ---------------------- Avvio + listeners -------------------- */
+/* -------------------- Avvio ------------------------------- */
 document.addEventListener('DOMContentLoaded', async ()=>{
   wire();
   wireSettings();
 
-  // Primo caricamento
-  await refreshNow();
-
-  // Timer ogni 60s
+  await refreshNow();               // primo caricamento
   REFRESH_TIMER = setInterval(refreshNow, 60000);
-
-  // Al rientro nella scheda → refresh
-  document.addEventListener('visibilitychange', ()=>{
-    if(!document.hidden) refreshNow();
-  });
-
-  // Quando torni online → refresh
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshNow(); });
   window.addEventListener('online', refreshNow);
-
-  // Quando la suite test (o altri) emettono l’evento → refresh
-  window.addEventListener('refreshDashboard', refreshNow);
+  window.addEventListener('refreshDashboard', refreshNow); // emesso da api.js dopo test
 });
