@@ -1,9 +1,5 @@
 /* =======================================================================
  * Automazione UI — OneConnect v2.3 (ottimizzato + Tests subpage)
- * - Usa api.js per endpoint admin
- * - JSONP solo per MODEL (pubblico)
- * - Auto-refresh: timer, visibilitychange, online, refreshDashboard
- * - Sotto‑pagina "Tests" con report Issue 48 (conteggio problemi da Log)
  * ======================================================================= */
 
 'use strict';
@@ -27,39 +23,18 @@ function setBadgeState(state){
   else if(s.startsWith('SECUR')) el.classList.add('alert');
   el.textContent = s.replace('_',' ');
 }
-
-function timeOnly(v){
-  if(!v || v==='—') return '—';
-  if (v instanceof Date && !isNaN(v)) {
-    return v.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  }
-  const s = String(v).trim();
-
-  // 1) match esplicito HH:MM o HH.MM
-  let m = s.match(/(\d{1,2})[:.](\d{2})/);
-  if (m) return (m[1].padStart(2,'0') + ':' + m[2]);
-
-  // 2) tenta parse Date (ISO o formati standard)
-  const d = new Date(s);
-  if(!isNaN(d)) return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-
-  // 3) tenta dd/mm/yyyy hh:mm (IT)
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/);
-  if (m) return (m[4].padStart(2,'0') + ':' + m[5]);
-
-  return '—';
-}
-
 function fmtTs(d){
   if(!d) return '—';
   const dt = (d instanceof Date) ? d : new Date(d);
   if (isNaN(dt)) return '—';
   return new Intl.DateTimeFormat('it-IT',{dateStyle:'short', timeStyle:'short'}).format(dt);
 }
-function toHm(v){
-  if(!v || v==='—') return '--:--';
-  const d = new Date(v); if(isNaN(d)) return '--:--';
-  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+function timeOnly(v){
+  if(!v || v==='—') return '—';
+  if (v instanceof Date && !isNaN(v)) return v.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const d = new Date(String(v)); if(!isNaN(d)) return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const m = String(v).match(/(\d{1,2})\D(\d{2})/); if(m) return m[1].padStart(2,'0')+':'+m[2];
+  return '—';
 }
 
 /* -------------------- Navigazione ----------------------- */
@@ -82,7 +57,7 @@ function navTo(tab){
   if(tab==='settings') loadSettingsPage();
   if(tab==='tests')   refreshTestsPage(true);
 }
-window.navTo = navTo; // esposto per api.js
+window.navTo = navTo;
 
 /* -------------------- JSONP MODEL (pubblico) ------------ */
 function jsonpModel(path=''){
@@ -155,11 +130,6 @@ function camsText(m){
   if(s==='COMFY_NIGHT')        return 'OFF · ON';
   return 'OFF · OFF';
 }
-function formatTimeOrDash(v){
-  if(!v||v==='—') return '—';
-  const d=new Date(v); if(isNaN(d)) return v;
-  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-}
 function renderCruscotto(m){
   const el=$('#cruscottoGrid'); if(!el || !m) return;
   const tiles=[
@@ -167,8 +137,8 @@ function renderCruscotto(m){
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI'), cls:(m.presenzaEffettiva?'animate-pulse':'')},
     {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji || '☁️'), value:`${m.weather?.tempC != null ? Math.round(m.weather.tempC) : '--'}° · ${m.weather?.windKmh != null ? Math.round(m.weather.windKmh) : '--'} km/h`, cls:'animate-breath'},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m), cls:(String(m.state||'').startsWith('SECURITY')?'animate-breath':'')},
-    {key:'alba',     title:'Alba',       icon:'🌅', value:formatTimeOrDash(m.next?.pianteAlba), cls:''},
-    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:formatTimeOrDash(m.next?.piantePostClose), cls:''},
+    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba), cls:''},
+    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto), cls:''},
     {key:'energy',   title:'Energy',     icon:'⚡', value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--'), cls:'animate-pulse oc-energy'},
     {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`, cls:''}
   ];
@@ -182,15 +152,6 @@ function renderCruscotto(m){
     tile.style.cursor='pointer';
     tile.addEventListener('click',() => navTo('energy'));
   });
-}
-
-/* -------------------- Rendering: Energy ------------------- */
-function renderEnergyPage(m){
-  if(!m) return;
-  $('#e2Current') && ($('#e2Current').textContent = (m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'-- kWh'));
-  $('#e2Today')   && ($('#e2Today').textContent   = (m.energy?.kwh!=null?`${(m.energy.kwh*0.6).toFixed(1)} kWh`:'--'));
-  $('#e2Week')    && ($('#e2Week').textContent    = (m.energy?.kwh!=null?`${(m.energy.kwh*4).toFixed(1)} kWh`:'--'));
-  $('#e2Offline') && ($('#e2Offline').textContent = (m.devicesOfflineCount!=null? m.devicesOfflineCount : '--'));
 }
 
 /* -------------------- Persone / Cams / Log ---------------- */
@@ -213,28 +174,7 @@ async function loadPeople(){
       badge.textContent = isOn ? 'Online' : 'Offline';
       right.appendChild(badge);
 
-      // KeepAlive pill (usa api.js)
-      const pill = document.createElement('button');
-      pill.className = 'ka-pill';
-      pill.textContent = 'KA…';
-      try{
-        const st = await api.keepaliveStatus(p.name);
-        pill.classList.toggle('on', !!st.on);
-        pill.textContent = 'KA ' + (st.on ? (`ON ${st.minutes||30}m`) : 'OFF');
-      }catch(_){ }
-      pill.addEventListener('click', async ()=>{
-        const wantOn = !pill.classList.contains('on');
-        let ok = null;
-        if (wantOn) ok = !!(await api.keepaliveOn(p.name, 30));
-        else        ok = !!(await api.keepaliveOff(p.name));
-        if (ok){
-          pill.classList.toggle('on', wantOn);
-          pill.textContent = 'KA ' + (wantOn ? 'ON 30m' : 'OFF');
-          toast(`KeepAlive ${p.name}: `+(wantOn?'ON':'OFF'));
-        }
-      });
-
-      right.appendChild(pill);
+      right.appendChild(document.createElement('div')); // spazio riservato (niente pill in Cruscotto)
       li.appendChild(left); li.appendChild(right);
       ul.appendChild(li);
     }
@@ -264,8 +204,7 @@ async function loadErrors(){
   }catch(_){}
 }
 
-/* -------------------- Sotto‑pagina TEST: Issue 48 --------- */
-/** Classifica log in: PASS/FAIL/WARN/ERR */
+/* -------------------- Report Test (Issue 48) -------------- */
 function classifyLogCode(code){
   const c = String(code||'');
   if (c.startsWith('TEST_PASS')) return 'PASS';
@@ -273,25 +212,34 @@ function classifyLogCode(code){
   if (c.startsWith('TEST_FAIL')) return 'FAIL';
   if (c.indexOf('_ERR')>=0 || c.startsWith('ERROR_')) return 'ERR';
   if (c.endsWith('_BLOCK') || c.endsWith('_IGNORED')) return 'WARN';
-  return ''; // neutro
+  return '';
+}
+/** Filtra i log a partire dall'ultimo test (DIAG_FULL_TEST o DIAG_QUICK).
+ *  Se non presente, usa le ~200 righe già fornite dall'endpoint. */
+function sliceLogsFromLastTest(all){
+  if(!all || !all.length) return [];
+  let fromIdx = -1;
+  for (let i=0; i<all.length; i++){
+    const c = String(all[i].code||'');
+    if (c==='DIAG_FULL_TEST' || c==='DIAG_QUICK'){ fromIdx = i; break; }
+  }
+  return (fromIdx>=0) ? all.slice(0, fromIdx) : all; // i log sono dal più recente al più vecchio
 }
 function renderIssuesReport(logs){
-  const issues = [];
-  const rows = logs||[];
-
+  const rows = sliceLogsFromLastTest(logs||[]);
+  const issues=[];
   rows.forEach((r,idx)=>{
-    const typ = classifyLogCode(r.code);
-    if (typ==='FAIL' || typ==='ERR'){
+    const typ=classifyLogCode(r.code);
+    if(typ==='FAIL' || typ==='ERR'){
       issues.push({
-        id: (r.code||'ISSUE') + '-' + (rows.length-idx), // ID sintetico
-        code: r.code||'',
-        desc: r.desc||'',
-        ts: r.ts
+        id: (r.code||'ISSUE')+'-'+(rows.length-idx),
+        code:r.code||'',
+        desc:r.desc||'',
+        ts:r.ts
       });
     }
   });
 
-  // donut
   const donut = $('#issueDonut');
   const numEl = donut?.querySelector('.num');
   const lblEl = donut?.querySelector('.lbl');
@@ -302,29 +250,21 @@ function renderIssuesReport(logs){
     if(numEl) numEl.textContent = String(cnt);
     if(lblEl) lblEl.textContent = 'issues';
   }
-
-  // summary text
   const sum = $('#issueSummary');
-  if(sum){
-    if(cnt===0) sum.textContent = 'Nessun problema rilevato negli ultimi log';
-    else sum.textContent = `${cnt} problemi trovati negli ultimi log`;
-  }
+  if(sum) sum.textContent = (cnt===0) ? 'Nessun problema nell’ultimo run' : `${cnt} problemi nell’ultimo run`;
 
-  // list
   const ul = $('#issuesList'); if(!ul) return;
-  ul.innerHTML = '';
+  ul.innerHTML='';
   if(cnt===0){
-    const li = document.createElement('li');
-    li.className = 'issue-row';
-    li.innerHTML = `<div class="issue-id">Tutto OK</div><span class="badge ok">Passed</span>`;
+    const li=document.createElement('li');
+    li.className='issue-row';
+    li.innerHTML=`<div class="issue-id">Tutto OK</div><span class="badge ok">Passed</span>`;
     ul.appendChild(li);
     return;
   }
-  // mostra al massimo 12 righe (quelle più recenti che sono issues)
   issues.slice(0,12).forEach(it=>{
-    const li = document.createElement('li');
-    li.className = 'issue-row';
-    const when = fmtTs(it.ts);
+    const li=document.createElement('li');
+    li.className='issue-row';
     const sevBadge = (it.code.startsWith('TEST_FAIL') ? '<span class="badge err">Failed</span>'
                       : it.code.indexOf('_ERR')>=0 || it.code.startsWith('ERROR_') ? '<span class="badge err">Error</span>'
                       : '<span class="badge warn">Warn</span>');
@@ -333,19 +273,17 @@ function renderIssuesReport(logs){
       <div class="issue-meta">
         <span>${it.code}</span>
         ${sevBadge}
-        <span class="sub">${when}</span>
+        <span class="sub">${fmtTs(it.ts)}</span>
       </div>`;
     ul.appendChild(li);
   });
 }
 async function refreshTestsPage(force=false){
-  // versione backend
   try{
     const v = await api.version();
     if(v?.ok && $('#backendVersion')) $('#backendVersion').textContent = v.version || '—';
   }catch(_){}
 
-  // log → report
   try{
     const res = await jsonpModel('?logs=1');
     const logs = (res?.logs)||[];
@@ -354,7 +292,7 @@ async function refreshTestsPage(force=false){
 }
 window.refreshTestsPage = refreshTestsPage;
 
-/* -------------------- Impostazioni (carica/salva) --------- */
+/* -------------------- Impostazioni ------------------------ */
 async function loadSettingsPage(){
   try{
     const [rStrict, rHold, rKaAuto, rExitG, rExitC, rFlags, rRet,
@@ -366,7 +304,6 @@ async function loadSettingsPage(){
       api.getEmptyGrace(), api.getPianteMinInt()
     ]);
 
-    // base
     $('#inpStrict')      && ($('#inpStrict').value      = (rStrict?.ok ? (rStrict.strict||0) : ''));
     $('#inpHold')        && ($('#inpHold').value        = (rHold?.ok   ? (rHold.hold||0)   : ''));
     $('#selKaAuto')      && ($('#selKaAuto').value      = (rKaAuto?.ok ? String(!!rKaAuto.ka_auto) : 'true'));
@@ -381,7 +318,6 @@ async function loadSettingsPage(){
     $('#btnToggleOverride')?.classList.toggle('on', o);
     $('#btnToggleVacanza') ?.classList.toggle('on', v);
 
-    // micro-tuning
     $('#inpLifeTimeout') && ($('#inpLifeTimeout').value = (rLT?.ok ? rLT.life_timeout : 60));
     $('#inpDebIn')       && ($('#inpDebIn').value       = (rDI?.ok ? rDI.debounce_in  : 2));
     $('#inpDebOut')      && ($('#inpDebOut').value      = (rDO?.ok ? rDO.debounce_out : 0));
@@ -431,7 +367,6 @@ function wireSettings(){
     if(ACTIVE_TAB==='log') loadErrors();
   });
 
-  // micro-tuning
   $('#btnSaveLifeTimeout')?.addEventListener('click', async ()=>{
     const ok = await saveNumber('set_life_timeout', $('#inpLifeTimeout').value); toast(ok?'Salvato':'Errore');
   });
@@ -448,7 +383,6 @@ function wireSettings(){
     const ok = await saveNumber('set_piante_min_interval', $('#inpPianteMin').value); toast(ok?'Salvato':'Errore');
   });
 
-  // override / vacanza
   $('#btnToggleOverride')?.addEventListener('click', async ()=>{
     try{ const f1 = await apiFetch('get_flags'); const cur = !!(f1?.ok && f1.override);
          const ok = await saveBool('set_override', !cur); if(!ok){ toast('Errore override'); return; }
@@ -466,7 +400,6 @@ function wire(){
   $$('.nav-btn').forEach(b => b.addEventListener('click', () => navTo(b.getAttribute('data-tab')) ));
   $('#peopleBar')?.addEventListener('click', () => navTo('people'));
 
-  // Tiles Home
   $('#btnOverride')?.addEventListener('click', async ()=>{
     const f1 = await apiFetch('get_flags'); const cur = !!(f1?.ok && f1.override);
     await saveBool('set_override', !cur); toast('Override: '+(!cur?'On':'Off')); refreshNow();
@@ -500,9 +433,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   wire();
   wireSettings();
 
-  await refreshNow();               // primo caricamento
+  await refreshNow();
   REFRESH_TIMER = setInterval(refreshNow, 60000);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshNow(); });
   window.addEventListener('online', refreshNow);
-  window.addEventListener('refreshDashboard', refreshNow); // emesso da api.js dopo test
+  window.addEventListener('refreshDashboard', refreshNow);
 });
