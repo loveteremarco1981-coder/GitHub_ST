@@ -13,318 +13,238 @@
   <link rel="stylesheet" href="assets/style.css?v=oc_v2_3">
 </head>
 <body>
-  <div id="app">
+<div id="app">
 
-    <!-- ===================================== -->
-    <!-- TOPBAR -->
-    <!-- ===================================== -->
-    <header class="topbar">
-      <div class="title-area">
-        <h1 class="app-title">Home</h1>
-        <span id="stateBadge" class="state-badge">—</span>
-      </div>
-
-      <div id="weatherPill" class="weather-pill">
-        <span id="weatherIcon" class="w-ico">☀️</span>
-        <span id="weatherTemp">--°</span>
-        <span class="dot">·</span>
-        <span id="weatherWind">-- km/h</span>
-      </div>
-    </header>
-
-    <div id="peopleBar" class="people-bar" role="button">
-      <span>Persone</span>
-      <span id="peopleSummary" class="people-summary">—</span>
+  <!-- ================= TOPBAR ================= -->
+  <header class="topbar">
+    <div class="title-area">
+      <h1 class="app-title">Home</h1>
+      <span id="stateBadge" class="state-badge">—</span>
     </div>
 
-    <!-- ===================================== -->
-    <!-- HOME -->
-    <!-- ===================================== -->
-    <main id="pageHome" class="page page-active">
-      <section class="card energy-card">
-        <div class="card-title">Energy</div>
-        <div class="energy-value" id="energyValue">— kWh</div>
-      </section>
+    <div id="weatherPill" class="weather-pill">
+      <span id="weatherIcon" class="w-ico">☀️</span>
+      <span id="weatherTemp">--°</span>
+      <span class="dot">·</span>
+      <span id="weatherWind">-- km/h</span>
+    </div>
+  </header>
 
-      <section class="favorites">
-        <div class="fav-grid">
+  <div id="peopleBar" class="people-bar" role="button">
+    <span>Persone</span>
+    <span id="peopleSummary" class="people-summary">—</span>
+  </div>
 
-          <button type="button" id="btnOverride" class="tile tile-md">
-            <div class="tile-ico">🛡️</div>
-            <div class="tile-txt">Override</div>
-            <div id="lblOverride" class="tile-sub">Off</div>
-          </button>
+  <!-- ================= HOME ================= -->
+  <main id="pageHome" class="page page-active">
+    <section class="card energy-card">
+      <div class="card-title">Energy</div>
+      <div class="energy-value" id="energyValue">— kWh</div>
+    </section>
 
-          <button type="button" id="btnVacanza" class="tile tile-md">
-            <div class="tile-ico">🏖️</div>
-            <div class="tile-txt">Vacanza</div>
-            <div id="lblVacanza" class="tile-sub">Off</div>
-          </button>
+    <section class="favorites">
+      <div class="fav-grid">
 
-          <button type="button" id="btnPiante" class="tile tile-md">
-            <div class="tile-ico">🌿</div>
-            <div class="tile-txt">Piante</div>
-            <div class="tile-sub">Irriga</div>
-          </button>
+        <button type="button" id="btnOverride" class="tile tile-md">
+          <div class="tile-ico">🛡️</div>
+          <div class="tile-txt">Override</div>
+          <div id="lblOverride" class="tile-sub">Off</div>
+        </button>
 
-          <button type="button" id="btnAlza" class="tile tile-md">
-            <div class="tile-ico">🪟</div>
-            <div id="lblAlza" class="tile-txt">Alza</div>
-            <div class="tile-sub">Se clicco si abbassa</div>
-          </button>
+        <button type="button" id="btnVacanza" class="tile tile-md">
+          <div class="tile-ico">🏖️</div>
+          <div class="tile-txt">Vacanza</div>
+          <div id="lblVacanza" class="tile-sub">Off</div>
+        </button>
 
-        </div>
-      </section>
-    </main>
+        <button type="button" id="btnPiante" class="tile tile-md">
+          <div class="tile-ico">🌿</div>
+          <div class="tile-txt">Piante</div>
+          <div class="tile-sub">Irriga</div>
+        </button>
 
-    <!-- ===================================== -->
-    <!-- PAGINA PERSONE -->
-    <!-- ===================================== -->
-    <main id="pagePeople" class="page">
-      <div class="people-toolbar">
-        <button type="button" id="btnStrictLife"  class="nav-btn small">⚙️ Strict LIFE</button>
-        <button type="button" id="btnMorningHold" class="nav-btn small">⏰ Morning HOLD</button>
+        <button type="button" id="btnAlza" class="tile tile-md">
+          <div class="tile-ico">🪟</div>
+          <div id="lblAlza" class="tile-txt">Alza</div>
+          <div class="tile-sub">Se clicco si abbassa</div>
+        </button>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= PERSONE ================= -->
+  <main id="pagePeople" class="page">
+    <div class="people-toolbar">
+      <button id="btnStrictLife"  class="nav-btn small">⚙️ Strict LIFE</button>
+      <button id="btnMorningHold" class="nav-btn small">⏰ Morning HOLD</button>
+    </div>
+    <section class="card">
+      <div class="card-title">Persone</div>
+      <ul id="peopleList" class="list"></ul>
+    </section>
+  </main>
+
+  <!-- ================= DISPOSITIVI ================= -->
+  <main id="pageDevices" class="page">
+    <section class="card">
+      <div class="card-title">Telecamere</div>
+      <div class="cams">
+        <div class="cam-row"><span>Interne</span><span id="camInterne" class="badge">—</span></div>
+        <div class="cam-row"><span>Esterne</span><span id="camEsterne" class="badge">—</span></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= LOG ================= -->
+  <main id="pageLog" class="page">
+    <section class="card">
+      <div class="card-title">Log</div>
+      <ul id="logErrors" class="list"></ul>
+    </section>
+  </main>
+
+  <!-- ================= CRUSCOTTO ================= -->
+  <main id="pageCruscotto" class="page">
+    <section class="cruscotto-grid" id="cruscottoGrid"></section>
+
+    <div class="cruscotto-toolbar">
+      <button id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
+      <button id="btnRunFullTest"  class="nav-btn small">🧪 Test</button>
+      <span id="testStatus" class="tag"></span>
+    </div>
+
+    <!-- ===== DIAGNOSTICA RAPIDA ===== -->
+    <section class="card" style="margin-top:12px">
+      <div class="card-title">Diagnostica Rapida</div>
+
+      <div class="setting-row">
+        <label>Lista trigger → Log</label>
+        <button class="mini" id="btnDiagList">Esegui</button>
       </div>
 
-      <section class="card">
-        <div class="card-title">Persone</div>
-        <ul id="peopleList" class="list"></ul>
-      </section>
-    </main>
-
-    <!-- ===================================== -->
-    <!-- PAGE DISPOSITIVI -->
-    <!-- ===================================== -->
-    <main id="pageDevices" class="page">
-      <section class="card">
-        <div class="card-title">Telecamere</div>
-
-        <div class="cams">
-          <div class="cam-row"><span>Interne</span><span id="camInterne" class="badge">—</span></div>
-          <div class="cam-row"><span>Esterne</span><span id="camEsterne" class="badge">—</span></div>
-        </div>
-      </section>
-    </main>
-
-    <!-- ===================================== -->
-    <!-- PAGE LOG -->
-    <!-- ===================================== -->
-    <main id="pageLog" class="page">
-      <section class="card">
-        <div class="card-title">Log (solo errori)</div>
-        <ul id="logErrors" class="list"></ul>
-      </section>
-    </main>
-
-    <!-- ===================================== -->
-    <!-- PAGE CRUSCOTTO -->
-    <!-- ===================================== -->
-    <main id="pageCruscotto" class="page">
-
-      <section class="cruscotto-grid" id="cruscottoGrid"></section>
-
-      <div class="cruscotto-toolbar">
-        <button type="button" id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
-        <button type="button" id="btnRunFullTest"  class="nav-btn small">🧪 Test</button>
-        <span id="testStatus" class="tag"></span>
+      <div class="setting-row">
+        <label>KA ON (5 min) Marco</label>
+        <button class="mini" id="btnKaOnMarco">ON</button>
+        <button class="mini" id="btnKaOffMarco">OFF</button>
       </div>
 
-      <!-- ===================================== -->
-      <!-- DIAGNOSTICA RAPIDA -->
-      <!-- ===================================== -->
-      <section class="card" style="margin-top:12px">
-        <div class="card-title">Diagnostica Rapida</div>
+      <div class="setting-row">
+        <label>Tutti OUT</label>
+        <button class="mini" id="btnAllOut">Esegui</button>
+      </div>
 
-        <div class="setting-row">
-          <label>Lista trigger → Log</label>
-          <button type="button" class="mini" id="btnDiagList">Esegui</button>
-        </div>
+      <div class="setting-row">
+        <label>Tutti IN</label>
+        <button class="mini" id="btnAllIn">Esegui</button>
+      </div>
 
-        <div class="setting-row">
-          <label>KA ON (5 min) Marco</label>
-          <button type="button" class="mini" id="btnKaOnMarco">ON</button>
-          <button type="button" class="mini" id="btnKaOffMarco">OFF</button>
-        </div>
+      <div class="setting-row">
+        <label>Verifica Grace</label>
+        <button class="mini" id="btnVerifyGrace">Esegui</button>
+      </div>
 
-        <div class="setting-row">
-          <label>Tutti OUT (guard+confirm)</label>
-          <button type="button" class="mini" id="btnAllOut">Esegui</button>
-        </div>
+      <div class="setting-row">
+        <label>Snapshot → Log</label>
+        <button class="mini" id="btnSnap">Esegui</button>
+      </div>
+    </section>
+  </main>
 
-        <div class="setting-row">
-          <label>Tutti IN (poke_life)</label>
-          <button type="button" class="mini" id="btnAllIn">Esegui</button>
-        </div>
+  <!-- ================= SETTINGS ================= -->
+  <main id="pageSettings" class="page">
+    <section class="card">
+      <div class="card-title">Impostazioni</div>
 
-        <div class="setting-row">
-          <label>Verifica grace ora</label>
-          <button type="button" class="mini" id="btnVerifyGrace">Esegui</button>
-        </div>
+      <div class="setting-row">
+        <label>Strict LIFE</label>
+        <input id="inpStrict" type="number" min="0"/>
+        <button class="mini" id="btnSaveStrict">Salva</button>
+      </div>
 
-        <div class="setting-row">
-          <label>Snapshot stato → Log</label>
-          <button type="button" class="mini" id="btnSnap">Esegui</button>
-        </div>
-      </section>
+      <div class="setting-row">
+        <label>Morning HOLD</label>
+        <input id="inpHold" type="number" min="0"/>
+        <button class="mini" id="btnSaveHold">Salva</button>
+      </div>
 
-    </main>
+      <hr class="sep"/>
 
-    <!-- ===================================== -->
-    <!-- PAGE SETTINGS (la tua versione era OK, ricostruita identica) -->
-    <!-- ===================================== -->
-    <main id="pageSettings" class="page">
-      <section class="card">
-        <div class="card-title">Impostazioni</div>
+      <div class="setting-row">
+        <label>KA Auto‑ON</label>
+        <select id="selKaAuto">
+          <option value="true">TRUE</option>
+          <option value="false">FALSE</option>
+        </select>
+        <button class="mini" id="btnSaveKaAuto">Salva</button>
+      </div>
 
-        <div class="setting-row">
-          <label for="inpStrict">Strict LIFE (min)</label>
-          <input id="inpStrict" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveStrict">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Exit Guard</label>
+        <input id="inpExitGuard" type="number" min="0"/>
+        <button class="mini" id="btnSaveExitGuard">Salva</button>
+      </div>
 
-        <div class="setting-row">
-          <label for="inpHold">Morning HOLD (min)</label>
-          <input id="inpHold" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveHold">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Exit Confirm</label>
+        <input id="inpExitConfirm" type="number" min="0"/>
+        <button class="mini" id="btnSaveExitConfirm">Salva</button>
+      </div>
 
-        <hr class="sep"/>
+      <hr class="sep"/>
 
-        <div class="setting-row">
-          <label for="selKaAuto">KA Auto‑ON (08–22)</label>
-          <select id="selKaAuto">
-            <option value="true">TRUE</option>
-            <option value="false">FALSE</option>
-          </select>
-          <button type="button" class="mini" id="btnSaveKaAuto">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Log retention</label>
+        <input id="inpLogRetention" type="number" min="1"/>
+        <button class="mini" id="btnSaveLogRetention">Salva</button>
+      </div>
 
-        <div class="setting-row">
-          <label for="inpExitGuard">Exit Guard (min)</label>
-          <input id="inpExitGuard" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveExitGuard">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Pulisci log</label>
+        <button class="mini btn-io" id="btnPruneLogs">Pulisci</button>
+      </div>
 
-        <div class="setting-row">
-          <label for="inpExitConfirm">Exit Confirm (min)</label>
-          <input id="inpExitConfirm" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveExitConfirm">Salva</button>
-        </div>
+      <hr class="sep"/>
 
-        <hr class="sep"/>
+      <div class="setting-row">
+        <label>LIFE Timeout</label>
+        <input id="inpLifeTimeout" type="number" min="0"/>
+        <button class="mini" id="btnSaveLifeTimeout">Salva</button>
+      </div>
 
-        <div class="setting-row">
-          <label for="inpLogRetention">Log retention (giorni)</label>
-          <input id="inpLogRetention" type="number" min="1"/>
-          <button type="button" class="mini" id="btnSaveLogRetention">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Debounce IN</label>
+        <input id="inpDebIn" type="number" min="0"/>
+        <button class="mini" id="btnSaveDebIn">Salva</button>
+      </div>
 
-        <div class="setting-row">
-          <label>Pulisci log</label>
-          <button type="button" class="mini btn-io" id="btnPruneLogs">Pulisci</button>
-          <span class="tag">Elimina voci vecchie</span>
-        </div>
+      <div class="setting-row">
+        <label>Debounce OUT</label>
+        <input id="inpDebOut" type="number" min="0"/>
+        <button class="mini" id="btnSaveDebOut">Salva</button>
+      </div>
 
-        <hr class="sep"/>
+      <div class="setting-row">
+        <label>Grace diurna</label>
+        <input id="inpEmptyGrace" type="number" min="0"/>
+        <button class="mini" id="btnSaveEmptyGrace">Salva</button>
+      </div>
 
-        <!-- Micro‑tuning -->
-        <div class="setting-row">
-          <label for="inpLifeTimeout">LIFE Timeout (min)</label>
-          <input id="inpLifeTimeout" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveLifeTimeout">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Piante: intervallo minimo</label>
+        <input id="inpPianteMin" type="number" min="10" step="5"/>
+        <button class="mini" id="btnSavePianteMin">Salva</button>
+      </div>
 
-        <div class="setting-row">
-          <label for="inpDebIn">Debounce IN (min)</label>
-          <input id="inpDebIn" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveDebIn">Salva</button>
-        </div>
+      <hr class="sep"/>
 
-        <div class="setting-row">
-          <label for="inpDebOut">Debounce OUT (min)</label>
-          <input id="inpDebOut" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveDebOut">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Override</label>
+        <button class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
+        <span id="lblOverrideState" class="tag">—</span>
+      </div>
 
-        <div class="setting-row">
-          <label for="inpEmptyGrace">Grace diurna (min)</label>
-          <input id="inpEmptyGrace" type="number" min="0" step="1"/>
-          <button type="button" class="mini" id="btnSaveEmptyGrace">Salva</button>
-        </div>
+      <div class="setting-row">
+        <label>Vacanza</label>
+        <button class="mini btn-io" id="btnToggleVacanza">ON
 
-        <div class="setting-row">
-          <label for="inpPianteMin">Piante: intervallo minimo (min)</label>
-          <input id="inpPianteMin" type="number" min="10" step="5"/>
-          <button type="button" class="mini" id="btnSavePianteMin">Salva</button>
-        </div>
-
-        <hr class="sep"/>
-
-        <div class="setting-row">
-          <label>Override</label>
-          <button type="button" class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
-          <span id="lblOverrideState" class="tag">—</span>
-        </div>
-
-        <div class="setting-row">
-          <label>Vacanza</label>
-          <button type="button" class="mini btn-io" id="btnToggleVacanza">ON/OFF</button>
-          <span id="lblVacanzaState" class="tag">—</span>
-        </div>
-
-      </section>
-    </main>
-
-    <!-- ===================================== -->
-    <!-- PAGE ENERGY -->
-    <!-- ===================================== -->
-    <main id="pageEnergy" class="page">
-      <section class="energy2-grid">
-        <div class="energy2-tile">
-          <div class="e2-icon">⚡</div>
-          <div class="e2-title">Consumo attuale</div>
-          <div id="e2Current" class="e2-value">-- kWh</div>
-        </div>
-
-        <div class="energy2-tile">
-          <div class="e2-icon">📅</div>
-          <div class="e2-title">Oggi</div>
-          <div id="e2Today" class="e2-value">-- kWh</div>
-        </div>
-
-        <div class="energy2-tile">
-          <div class="e2-icon">📊</div>
-          <div class="e2-title">Settimana</div>
-          <div id="e2Week" class="e2-value">-- kWh</div>
-        </div>
-
-        <div class="energy2-tile">
-          <div class="e2-icon">🔌</div>
-          <div class="e2-title">Dispositivi offline</div>
-          <div id="e2Offline" class="e2-value">--</div>
-        </div>
-      </section>
-    </main>
-
-  </div><!-- fine #app -->
-
-  <!-- ===================================== -->
-  <!-- NAV BOTTOM -->
-  <!-- ===================================== -->
-  <nav class="bottom-nav" aria-label="Sezioni">
-    <button data-tab="home"      class="nav-btn nav-active">Home</button>
-    <button data-tab="people"    class="nav-btn">Persone</button>
-    <button data-tab="devices"   class="nav-btn">Dispositivi</button>
-    <button data-tab="log"       class="nav-btn">Log</button>
-    <button data-tab="cruscotto" class="nav-btn">Cruscotto</button>
-    <button data-tab="energy"    class="nav-btn">Energy</button>
-  </nav>
-
-  <!-- ===================================== -->
-  <!-- JS in coda -->
-  <!-- ===================================== -->
-api.js</script>
-js/app.js?v=oc_v2_3</script>
-
-</body>
-</html>
