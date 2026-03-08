@@ -63,4 +63,20 @@ const api = {
   keepaliveOff:    (name) => apiFetch('keepalive_off', { name }),
 };
 </script>
-``
+
+// piccolo helper per messaggi
+function toast(msg){ try{ console.log(msg); }catch(_){ alert(msg); } }
+
+// Pulsante "🧪 Test"
+document.getElementById('btnRunFullTest').onclick = async ()=>{
+  try{
+    const res = await apiFetch('diag_full_test'); // chiama l’endpoint
+    if(res && res.ok){
+      toast('Test suite lanciata: vedi Log per i risultati');
+    }else{
+      toast('Errore test: ' + (res && res.error ? res.error : 'unknown'));
+    }
+  }catch(e){
+    toast('Errore rete: ' + e.message);
+  }
+};
