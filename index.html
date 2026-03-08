@@ -10,7 +10,8 @@
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <link rel="stylesheet" href="assets/style.css?v=oc_v2_3">
+  assets/style.css?v=oc_v2_3
+
   <!-- Mini stile locale per pagina Test -->
   <style>
     /* griglia e cards */
@@ -147,46 +148,9 @@
 
     <div class="cruscotto-toolbar">
       <button id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
-      <!-- Il pulsante Test ora apre la sotto‑pagina Test -->
       <button id="btnOpenTests" class="nav-btn small">🧪 Test</button>
       <span id="testStatus" class="tag"></span>
     </div>
-
-    <!-- Diagnostica Rapida rimane qui, ma la pagina Test avrà anche la sua area dedicata -->
-    <section class="card" style="margin-top:12px">
-      <div class="card-title">Diagnostica Rapida</div>
-
-      <div class="setting-row">
-        <label>Lista trigger → Log</label>
-        <button type="button" class="mini" id="btnDiagList">Esegui</button>
-      </div>
-
-      <div class="setting-row">
-        <label>KA ON (5 min) Marco</label>
-        <button type="button" class="mini" id="btnKaOnMarco">ON</button>
-        <button type="button" class="mini" id="btnKaOffMarco">OFF</button>
-      </div>
-
-      <div class="setting-row">
-        <label>Tutti OUT (guard+confirm)</label>
-        <button type="button" class="mini" id="btnAllOut">Esegui</button>
-      </div>
-
-      <div class="setting-row">
-        <label>Tutti IN (poke_life)</label>
-        <button type="button" class="mini" id="btnAllIn">Esegui</button>
-      </div>
-
-      <div class="setting-row">
-        <label>Verifica grace ora</label>
-        <button type="button" class="mini" id="btnVerifyGrace">Esegui</button>
-      </div>
-
-      <div class="setting-row">
-        <label>Snapshot stato → Log</label>
-        <button type="button" class="mini" id="btnSnap">Esegui</button>
-      </div>
-    </section>
   </main>
 
   <!-- ================= TESTS (sotto‑pagina) ================= -->
@@ -233,7 +197,7 @@
           <div id="issueDonut" class="donut"><div class="num">0</div><div class="lbl">issues</div></div>
           <div>
             <div id="issueSummary" class="tag">—</div>
-            <div style="opacity:.7;font-size:.9rem">Analisi basata sulle ultime ~200 righe del Log</div>
+            <div style="opacity:.7;font-size:.9rem">Analisi basata sugli ultimi test o ~200 righe di Log</div>
           </div>
         </div>
 
@@ -365,7 +329,7 @@
         <div id="e2Week" class="e2-value">-- kWh</div>
       </div>
 
-      <div class="e2-tile">
+      <div class="energy2-tile">
         <div class="e2-icon">🔌</div>
         <div class="e2-title">Dispositivi offline</div>
         <div id="e2Offline" class="e2-value">--</div>
@@ -386,8 +350,8 @@
 </nav>
 
 <!-- ================= JS CORRETTI ================= -->
-<script src="api.js?v=20260308"></script>
-<script src="js/app.js?v=oc_v2_3"></script>
+api.js?v=20260308</script>
+js/app.js?v=oc_v2_3</script>
 
 </body>
 </html>
