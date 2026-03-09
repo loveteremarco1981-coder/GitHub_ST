@@ -141,6 +141,10 @@ function renderCruscotto(m){
       <div class="cr-value">${t.value}</div>
     </div>`).join('');
   el.querySelectorAll('.cr-tile[data-key="energy"]').forEach(t=>{ t.style.cursor='pointer'; t.addEventListener('click',()=>navTo('energy')); });
+
++  // Aggiorna il mini-riassunto issues
++  renderIssuesMiniInDashboard();
+
 }
 
 /* RENDER ENERGY */
@@ -319,3 +323,52 @@ document.addEventListener('DOMContentLoaded', async ()=>{
    window.addEventListener('online',refreshNow);
    window.addEventListener('refreshDashboard',refreshNow);
  });
+
+// Mini riassunto issues per Cruscotto (riusa classifier già presente)
+async function renderIssuesMiniInDashboard(){
+  try{
+    const r = await jsonpModel('?logs=1');
+    const logs = (r?.logs)||[];
+
+    // Estrai le "issue" come in renderIssuesReport
+    const issues=[];
+    logs.forEach((row, idx)=>{
+      const t = classifyLogCode(row.code);
+      if (t==='FAIL' || t==='ERR'){
+        issues.push({
+          id: (row.code||'ISSUE')+'-'+(logs.length-idx),
+          code: row.code||'',
+          desc: row.desc||'',
+          ts: row.ts
+        });
+      }
+    });
+
+    const card = document.getElementById('issuesSummaryCard');
+    const badge= document.getElementById('issuesCountBadge');
+    const ul   = document.getElementById('issuesMiniList');
+    if(!card || !badge || !ul) return;
+
+    badge.textContent = String(issues.length);
+    ul.innerHTML = '';
+
+    if(issues.length===0){
+      card.style.display = 'none';
+      return;
+    }
+
+    // Mostra il box e le prime 5 righe
+    card.style.display = '';
+    issues.slice(0,5).forEach(it=>{
+      const li = document.createElement('li');
+      li.className = 'issue-row';
+      const sev = (it.code.startsWith('TEST_FAIL') || it.code.indexOf('_ERR')>=0 || it.code.startsWith('ERROR_'))
+        ? '<span class="badge err">Errore</span>' : '<span class="badge warn">Warn</span>';
+      li.innerHTML = `
+        <div class="issue-id">${it.id}</div>
+        <div class="issue-meta"><span>${it.code}</span>${sev}<span class="sub">${fmtTs(it.ts)}</span></div>`;
+      ul.appendChild(li);
+    });
+
+  }catch(_){}
+}
