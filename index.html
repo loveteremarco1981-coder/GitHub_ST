@@ -206,12 +206,107 @@
   </main>
 
   <!-- SETTINGS ed ENERGY restano invariati -->
-  <main id="pageSettings" class="page">
-    <section class="card"><div class="card-title">Impostazioni</div>
-      <!-- … (le tue righe impostazioni) … -->
-    </section>
-  </main>
+       <main id="pageSettings" class="page">
+  <section class="card">
+    <div class="card-title">Impostazioni</div>
 
+    <div class="setting-row">
+      <label>Strict LIFE (min)</label>
+      <input id="inpStrict" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveStrict">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Morning HOLD (min)</label>
+      <input id="inpHold" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveHold">Salva</button>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="setting-row">
+      <label>KA Auto‑ON (TRUE/FALSE)</label>
+      <select id="selKaAuto">
+        <option value="true">TRUE</option>
+        <option value="false">FALSE</option>
+      </select>
+      <button class="mini" id="btnSaveKaAuto">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Exit Guard (min)</label>
+      <input id="inpExitGuard" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveExitGuard">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Exit Confirm (min)</label>
+      <input id="inpExitConfirm" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveExitConfirm">Salva</button>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="setting-row">
+      <label>Log retention (giorni)</label>
+      <input id="inpLogRetention" type="number" min="1"/>
+      <button class="mini" id="btnSaveLogRetention">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Pulisci log</label>
+      <button class="mini" id="btnPruneLogs">Pulisci</button>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="setting-row">
+      <label>LIFE Timeout (min)</label>
+      <input id="inpLifeTimeout" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveLifeTimeout">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Debounce IN (min)</label>
+      <input id="inpDebIn" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveDebIn">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Debounce OUT (min)</label>
+      <input id="inpDebOut" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveDebOut">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Grace diurna (min)</label>
+      <input id="inpEmptyGrace" type="number" min="0" step="1"/>
+      <button class="mini" id="btnSaveEmptyGrace">Salva</button>
+    </div>
+
+    <div class="setting-row">
+      <label>Piante: intervallo minimo (min)</label>
+      <input id="inpPianteMin" type="number" min="10" step="5"/>
+      <button class="mini" id="btnSavePianteMin">Salva</button>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="setting-row">
+      <label>Override</label>
+      <button class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
+      <span id="lblOverrideState" class="tag">—</span>
+    </div>
+
+    <div class="setting-row">
+      <label>Vacanza</label>
+      <button class="mini btn-io" id="btnToggleVacanza">ON/OFF</button>
+      <span id="lblVacanzaState" class="tag">—</span>
+    </div>
+
+  </section>
+</main>
+      
   <main id="pageEnergy" class="page">
     <section class="energy2-grid">
       <!-- … (le tue tile energy) … -->
