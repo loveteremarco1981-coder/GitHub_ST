@@ -142,6 +142,15 @@
     <section class="cruscotto-grid" id="cruscottoGrid"></section>
 
     <div class="cruscotto-toolbar">
+      <!-- Riassunto Issues (mini) -->
+<section class="card" id="issuesSummaryCard" style="display:none;margin-top:12px">
+  <div class="card-title">Ultimi problemi (log)</div>
+  <div class="row" style="margin-bottom:8px">
+    <div>Rilevazioni recenti</div>
+    <span id="issuesCountBadge" class="badge">0</span>
+  </div>
+  <ul id="issuesMiniList" class="issues-list"></ul>
+</section>
       <button id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
       <button id="btnOpenTests" class="nav-btn small">🧪 Test</button>
       <span id="testStatus" class="tag"></span>
