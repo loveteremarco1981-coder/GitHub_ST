@@ -239,53 +239,7 @@ async function refreshTestsPage(force=false){
 window.refreshTestsPage=refreshTestsPage;
 
 /* SETTINGS: loader/saver */
-async function loadSettingsPage(){
-  try{
-    const [
-      strict, hold, kaa, exitG, exitC, logDays,
-      lifeTo, debIn, debOut, grace, pMin, flags
-    ] = await Promise.all([
-      api.getStrict(), api.getHold(), api.getKaAuto(),
-      api.getExitGuard(), api.getExitConfirm(), api.getLogRetention(),
-      api.getLifeTimeout(), api.getDebounceIn(), api.getDebounceOut(),
-      api.getEmptyGrace(), api.getPianteMinInt(), apiFetch('get_flags')
-    ]);
 
-    const setVal = (id, v)=>{ const el=document.getElementById(id); if(el) el.value = (v!=null? v : ''); };
-
-    setVal('inpStrict',       strict?.strict);
-    setVal('inpHold',         hold?.hold);
-    document.getElementById('selKaAuto')?.querySelectorAll('option').forEach(o=>{ o.selected = (String(o.value).toLowerCase() === String(kaa?.ka_auto).toLowerCase()); });
-    setVal('inpExitGuard',    exitG?.exit_guard);
-    setVal('inpExitConfirm',  exitC?.exit_confirm);
-    setVal('inpLogRetention', logDays?.days);
-    setVal('inpLifeTimeout',  lifeTo?.life_timeout);
-    setVal('inpDebIn',        debIn?.debounce_in);
-    setVal('inpDebOut',       debOut?.debounce_out);
-    setVal('inpEmptyGrace',   grace?.empty_grace);
-    setVal('inpPianteMin',    pMin?.min);
-
-    // Stato override/vacanza
-    document.getElementById('lblOverrideState') && (document.getElementById('lblOverrideState').textContent = (flags?.override?'ON':'OFF'));
-    document.getElementById('lblVacanzaState')  && (document.getElementById('lblVacanzaState').textContent  = (flags?.vacanza?'ON':'OFF'));
-  }catch(e){
-    console.error('loadSettingsPage', e);
-  }
-
-  // Wiring dei pulsanti Salva (idempotente)
-  const bind=(id,fn)=>{ const b=document.getElementById(id); if(b && !b._wired){ b._wired=true; b.onclick=fn; } };
-  bind('btnSaveStrict',      async()=>{ const v=+document.getElementById('inpStrict').value;      await api.setStrict(v);      toast('Strict salvato'); });
-  bind('btnSaveHold',        async()=>{ const v=+document.getElementById('inpHold').value;        await api.setHold(v);        toast('Hold salvato'); });
-  bind('btnSaveKaAuto',      async()=>{ const b=document.getElementById('selKaAuto').value;       await api.setKaAuto(b==='true'); toast('KA Auto salvato'); });
-  bind('btnSaveExitGuard',   async()=>{ const v=+document.getElementById('inpExitGuard').value;   await api.setExitGuard(v);   toast('Exit Guard salvato'); });
-  bind('btnSaveExitConfirm', async()=>{ const v=+document.getElementById('inpExitConfirm').value; await api.setExitConfirm(v); toast('Exit Confirm salvato'); });
-  bind('btnSaveLogRetention',async()=>{ const v=+document.getElementById('inpLogRetention').value;await api.setLogRetention(v);toast('Retention salvata'); });
-  bind('btnPruneLogs',       async()=>{ await api.pruneLogs(); toast('Log ripulito'); });
-
-  bind('btnSaveLifeTimeout', async()=>{ const v=+document.getElementById('inpLifeTimeout').value; await api.setLifeTimeout(v); toast('LIFE Timeout salvato'); });
-  bind('btnSaveDebIn',       async()=>{ const v=+document.getElementById('inpDebIn').value;       await api.setDebounceIn(v);  toast('Debounce IN salvato'); });
-  bind('btnSaveDebOut',      async()=>{ const v=+document.getElementById('inpDebOut').value;      await api.setDebounceOut(v); toast('Debounce OUT salvato'); });
-  bind('btnSaveEmptyGrace',  async()=>{
 
 /* WIRING */
 function wire(){
