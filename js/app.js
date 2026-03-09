@@ -16,12 +16,7 @@ function setBadgeState(st){
   else if(s.startsWith('SECUR')) el.classList.add('alert');
   el.textContent=s.replace('_',' ');
 }
-
-function fmtTs(d){
-  if(!d) return '—';
-  const dt=(d instanceof Date)?d:new Date(d);
-  return isNaN(dt)?'—':new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short'}).format(dt);
-}
+function fmtTs(d){ if(!d) return '—'; const dt=(d instanceof Date)?d:new Date(d); return isNaN(dt)?'—':new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short'}).format(dt); }
 
 /* FIX: parsing orari -> supporta hh:mm e hh.mm + Date + dd/mm/yyyy hh:mm */
 function timeOnly(v){
@@ -29,12 +24,10 @@ function timeOnly(v){
   if(v instanceof Date && !isNaN(v.getTime()))
     return v.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   const s=String(v).trim();
-  let m=s.match(/^(\d{1,2})[:.](\d{2})$/);            // hh:mm o hh.mm
-  if(m) return m[1].padStart(2,'0')+':'+m[2];
-  const d=new Date(s);                                 // ISO o simile
-  if(!isNaN(d)) return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/);  // dd/mm/yyyy hh[:.]mm
-  if(m) return m[4].padStart(2,'0')+':'+m[5];
+  let m=s.match(/^(\d{1,2}):(\d{2})$/); if(m) return m[1].padStart(2,'0')+':'+m[2];
+  m=s.match(/^(\d{1,2})\.(\d{2})$/);    if(m) return m[1].padStart(2,'0')+':'+m[2];
+  const d=new Date(s); if(!isNaN(d)) return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/); if(m) return m[4].padStart(2,'0')+':'+m[5];
   return '—';
 }
 
@@ -47,16 +40,14 @@ function navTo(tab){
   $$('.nav-btn').forEach(b=>b.classList.remove('nav-active'));
   const nb = document.querySelector(`.nav-btn[data-tab="${tab}"]`);
   if(nb) nb.classList.add('nav-active');
-  if(tab==='people') loadPeople();
-  if(tab==='devices') loadCams();
-  if(tab==='log') loadErrors();
-  if(tab==='energy') renderEnergyPage(MODEL);
-  if(tab==='settings') loadSettingsPage();
-  
--  if(tab==='tests') refreshTestsPage(true);
-+  if(tab==='tests')     refreshTestsPage(true);
-+  if(tab==='cruscotto') refreshTestsPage(false); // aggiorna il badge riassuntivo (patch 2)
 
+  if(tab==='people')    loadPeople();
+  if(tab==='devices')   loadCams();
+  if(tab==='log')       loadErrors();
+  if(tab==='energy')    renderEnergyPage(MODEL);
+  if(tab==='settings')  loadSettingsPage();
+  if(tab==='tests')     refreshTestsPage(true);
+  if(tab==='cruscotto') renderIssuesMiniInDashboard();
 }
 window.navTo=navTo;
 
@@ -83,14 +74,9 @@ async function fetchModelOnce(){
 async function loadModelWithRetry(){
   const delays=[0,2000,5000];
   for(let i=0;i<delays.length;i++){
-    try{
-      if(delays[i]) await new Promise(r=>setTimeout(r,delays[i]));
-      await fetchModelOnce(); return true;
-    }catch(e){
-      if(i===delays.length-1) console.error('MODEL failed',e);
-    }
-  }
-  return false;
+    try{ if(delays[i]) await new Promise(r=>setTimeout(r,delays[i])); await fetchModelOnce(); return true; }
+    catch(e){ if(i===delays.length-1) console.error('MODEL failed',e); }
+  } return false;
 }
 
 /* RENDER HOME */
@@ -116,12 +102,7 @@ function renderHome(m){
 }
 
 /* RENDER CRUSCOTTO */
-function camsText(m){
-  const s=String(m?.state||'').toUpperCase();
-  if(s.startsWith('SECURITY')) return 'ON · ON';
-  if(s==='COMFY_NIGHT') return 'OFF · ON';
-  return 'OFF · OFF';
-}
+function camsText(m){ const s=String(m?.state||'').toUpperCase(); if(s.startsWith('SECURITY'))return 'ON · ON'; if(s==='COMFY_NIGHT')return 'OFF · ON'; return 'OFF · OFF'; }
 function renderCruscotto(m){
   const el=$('#cruscottoGrid'); if(!el||!m) return;
   const tiles=[
@@ -142,9 +123,8 @@ function renderCruscotto(m){
     </div>`).join('');
   el.querySelectorAll('.cr-tile[data-key="energy"]').forEach(t=>{ t.style.cursor='pointer'; t.addEventListener('click',()=>navTo('energy')); });
 
-+  // Aggiorna il mini-riassunto issues
-+  renderIssuesMiniInDashboard();
-
+  // Aggiorna mini-riassunto issues
+  renderIssuesMiniInDashboard();
 }
 
 /* RENDER ENERGY */
@@ -169,8 +149,8 @@ async function loadPeople(){
       left.innerHTML=`<div>${p.name}</div><div class="sub">${p.lastEvent||'—'} • ${ts}</div>`;
       const right=document.createElement('div');
       const badge=document.createElement('span'); const on=!!p.online;
-      badge.className='badge '+(on?'ok':'err'); badge.textContent=on?'Online':'Offline';
-      right.appendChild(badge); li.appendChild(left); li.appendChild(right); ul.appendChild(li);
+      badge.className='badge '+(on?'ok':'err'); badge.textContent=on?'Online':'Offline'; right.appendChild(badge);
+      li.appendChild(left); li.appendChild(right); ul.appendChild(li);
     }
   }catch(_){}
 }
@@ -185,13 +165,12 @@ async function loadCams(){
 async function loadErrors(){
   try{
     const r=await jsonpModel('?logs=1'); const ul=$('#logErrors'); if(!ul) return; ul.innerHTML='';
-    const arr=(r?.logs)||[];
-    if(arr.length===0){ const li=document.createElement('li'); li.textContent='Nessun errore'; ul.appendChild(li); return; }
+    const arr=(r?.logs)||[]; if(arr.length===0){ const li=document.createElement('li'); li.textContent='Nessun errore'; ul.appendChild(li); return; }
     arr.forEach(e=>{ const li=document.createElement('li'); li.innerHTML=`<div>${e.code||'ERR'}</div><div class="sub">${e.desc||''} • ${fmtTs(e.ts)}</div>`; ul.appendChild(li); });
   }catch(_){}
 }
 
-/* TEST PAGE (Issue 48) */
+/* Classificazione log in tipi */
 function classifyLogCode(code){
   const c=String(code||'');
   if(c.startsWith('TEST_PASS'))return'PASS';
@@ -201,78 +180,86 @@ function classifyLogCode(code){
   if(c.endsWith('_BLOCK')||c.endsWith('_IGNORED'))return'WARN';
   return'';
 }
+
+/* Report completo Issues (pagina Test) */
 function renderIssuesReport(logs){
-  const issues=[];
-  (logs||[]).forEach((r,idx)=>{
-    const t=classifyLogCode(r.code);
-    if(t==='FAIL'||t==='ERR'){ issues.push({id:(r.code||'ISSUE')+'-'+(logs.length-idx),code:r.code||'',desc:r.desc||'',ts:r.ts}); }
-  });
+  const issues=[]; (logs||[]).forEach((r,idx)=>{ const t=classifyLogCode(r.code); if(t==='FAIL'||t==='ERR'){ issues.push({id:(r.code||'ISSUE')+'-'+(logs.length-idx),code:r.code||'',desc:r.desc||'',ts:r.ts}); }});
   const donut=$('#issueDonut'); const cnt=issues.length;
-  if(donut){
-    donut.style.setProperty('--pct', cnt>0?'100%':'0%');
-    donut.classList.toggle('bad',cnt>0);
-    donut.querySelector('.num').textContent=String(cnt);
-  }
+  if(donut){ donut.style.setProperty('--pct', cnt>0?'100%':'0%'); donut.classList.toggle('bad',cnt>0); donut.querySelector('.num').textContent=String(cnt); }
   const sum=$('#issueSummary'); if(sum){ sum.textContent=(cnt===0?'Nessun problema rilevato negli ultimi log':`${cnt} problemi trovati negli ultimi log`); }
   const ul=$('#issuesList'); if(!ul) return; ul.innerHTML='';
-  if(cnt===0){
-    const li=document.createElement('li'); li.className='issue-row';
-    li.innerHTML=`<div class="issue-id">Tutto OK</div><span class="badge ok">Passed</span>`;
-    ul.appendChild(li); return;
-  }
+  if(cnt===0){ const li=document.createElement('li'); li.className='issue-row'; li.innerHTML=`<div class="issue-id">Tutto OK</div><span class="badge ok">Passed</span>`; ul.appendChild(li); return; }
   issues.slice(0,12).forEach(it=>{
     const li=document.createElement('li'); li.className='issue-row';
-    const sev=(it.code.startsWith('TEST_FAIL')||it.code.indexOf('_ERR')>=0||it.code.startsWith('ERROR_'))
-      ? '<span class="badge err">Errore</span>' : '<span class="badge warn">Warn</span>';
+    const sev=(it.code.startsWith('TEST_FAIL')||it.code.indexOf('_ERR')>=0||it.code.startsWith('ERROR_'))?'<span class="badge err">Errore</span>':'<span class="badge warn">Warn</span>';
     li.innerHTML=`<div class="issue-id">${it.id}</div><div class="issue-meta"><span>${it.code}</span>${sev}<span class="sub">${fmtTs(it.ts)}</span></div>`;
     ul.appendChild(li);
   });
 }
+
+/* MINi-Report Issues in Cruscotto */
+async function renderIssuesMiniInDashboard(){
+  try{
+    const r = await jsonpModel('?logs=1');
+    const logs = (r?.logs)||[];
+
+    const issues=[];
+    logs.forEach((row, idx)=>{
+      const t = classifyLogCode(row.code);
+      if (t==='FAIL' || t==='ERR'){
+        issues.push({ id:(row.code||'ISSUE')+'-'+(logs.length-idx), code:row.code||'', desc:row.desc||'', ts:row.ts });
+      }
+    });
+
+    const card = document.getElementById('issuesSummaryCard');
+    const badge= document.getElementById('issuesCountBadge');
+    const ul   = document.getElementById('issuesMiniList');
+    if(!card || !badge || !ul) return;
+
+    badge.textContent = String(issues.length);
+    ul.innerHTML = '';
+
+    if(issues.length===0){ card.style.display='none'; return; }
+
+    card.style.display='';
+    issues.slice(0,5).forEach(it=>{
+      const li=document.createElement('li'); li.className='issue-row';
+      const sev=(it.code.startsWith('TEST_FAIL')||it.code.indexOf('_ERR')>=0||it.code.startsWith('ERROR_'))?'<span class="badge err">Errore</span>':'<span class="badge warn">Warn</span>';
+      li.innerHTML=`<div class="issue-id">${it.id}</div><div class="issue-meta"><span>${it.code}</span>${sev}<span class="sub">${fmtTs(it.ts)}</span></div>`;
+      ul.appendChild(li);
+    });
+  }catch(_){}
+}
+
+/* TEST PAGE */
 async function refreshTestsPage(force=false){
   try{ const v=await api.version(); if(v?.ok && $('#backendVersion')) $('#backendVersion').textContent=v.version||'—'; }catch(_){}
   try{ const r=await jsonpModel('?logs=1'); renderIssuesReport((r?.logs)||[]); }catch(_){}
 }
 window.refreshTestsPage=refreshTestsPage;
 
-/* SETTINGS (placeholder: se già li hai, riusa i tuoi) */
+/* SETTINGS (se già li hai altrove puoi sostituire) */
 async function loadSettingsPage(){}
 
 /* WIRING */
 function wire(){
   $$('.nav-btn').forEach(b=>b.addEventListener('click',()=>navTo(b.getAttribute('data-tab'))));
   $('#peopleBar')?.addEventListener('click',()=>navTo('people'));
-  $('#btnOverride')?.addEventListener('click',async()=>{
-    const f1=await apiFetch('get_flags');
-    const cur=!!(f1?.ok&&f1.override);
-    await apiFetch('set_override',{value:String(!cur).toUpperCase()});
-    toast('Override: '+(!cur?'On':'Off')); refreshNow();
-  });
-  $('#btnVacanza')?.addEventListener('click',async()=>{
-    const f1=await apiFetch('get_flags');
-    const cur=!!(f1?.ok&&f1.vacanza);
-    await apiFetch('set_vacanza',{value:String(!cur).toUpperCase()});
-    toast('Vacanza: '+(!cur?'On':'Off')); refreshNow();
-  });
-  $('#btnPiante')?.addEventListener('click',async()=>{
-    const r=await apiFetch('piante');
-    toast(r?.ok?'Piante avviato':'Piante bloccate');
-  });
-  $('#btnAlza')?.addEventListener('click',async()=>{
-    const goDown=(($('#lblAlza')?.textContent)||'')==='Abbassa';
-    if(goDown){ await apiFetch('abbassa_tutto'); $('#lblAlza').textContent='Alza'; }
-    else { await apiFetch('alza_tutto'); $('#lblAlza').textContent='Abbassa'; }
-  });
+  $('#btnOverride')?.addEventListener('click',async()=>{ const f1=await apiFetch('get_flags'); const cur=!!(f1?.ok&&f1.override); await apiFetch('set_override',{value:String(!cur).toUpperCase()}); toast('Override: '+(!cur?'On':'Off')); refreshNow(); });
+  $('#btnVacanza')?.addEventListener('click',async()=>{ const f1=await apiFetch('get_flags'); const cur=!!(f1?.ok&&f1.vacanza); await apiFetch('set_vacanza',{value:String(!cur).toUpperCase()}); toast('Vacanza: '+(!cur?'On':'Off')); refreshNow(); });
+  $('#btnPiante')?.addEventListener('click',async()=>{ const r=await apiFetch('piante'); toast(r?.ok?'Piante avviato':'Piante bloccate'); });
+  $('#btnAlza')?.addEventListener('click',async()=>{ const goDown=(($('#lblAlza')?.textContent)||'')==='Abbassa'; if(goDown){ await apiFetch('abbassa_tutto'); $('#lblAlza').textContent='Alza'; } else { await apiFetch('alza_tutto'); $('#lblAlza').textContent='Abbassa'; } });
   $('#btnOpenSettings')?.addEventListener('click',()=>navTo('settings'));
 
-  // TEST page
+  // TEST page buttons
   const k=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onclick=fn; };
-  k('tQuickList', ()=>runQuick('list',{},'tQuickList','diagStatus'));
-  k('tKaOn',      ()=>runQuick('ka_on',{name:'marco',minutes:5},'tKaOn','diagStatus'));
-  k('tKaOff',     ()=>runQuick('ka_off',{name:'marco'},'tKaOff','diagStatus'));
-  k('tAllIn',     ()=>runQuick('all_in',{},'tAllIn','diagStatus'));
-  k('tAllOut',    ()=>runQuick('all_out',{},'tAllOut','diagStatus'));
+  k('tQuickList',()=>runQuick('list',{},'tQuickList','diagStatus'));
+  k('tKaOn',()=>runQuick('ka_on',{name:'marco',minutes:5},'tKaOn','diagStatus'));
+  k('tKaOff',()=>runQuick('ka_off',{name:'marco'},'tKaOff','diagStatus'));
+  k('tAllIn',()=>runQuick('all_in',{},'tAllIn','diagStatus'));
+  k('tAllOut',()=>runQuick('all_out',{},'tAllOut','diagStatus'));
   k('tVerifyGrace',()=>runQuick('verify_grace',{},'tVerifyGrace','diagStatus'));
-  k('tSnap',       ()=>runQuick('snap',{},'tSnap','diagStatus'));
+  k('tSnap',()=>runQuick('snap',{},'tSnap','diagStatus'));
 
   $('#btnBackToCrusc')?.addEventListener('click',()=>navTo('cruscotto'));
   $('#btnRefreshReport')?.addEventListener('click',()=>window.refreshTestsPage(true));
@@ -285,12 +272,7 @@ async function runQuick(op, params={}, btnId=null, statusId='diagStatus'){
   try{
     const res = await api.quick(op, params);
     if(res && res.ok){
-      const map={
-        list:'Lista trigger → Log',
-        ka_on:`KA ON ${params?.name||''} (${params?.minutes||''}m)`,
-        ka_off:`KA OFF ${params?.name||''}`,
-        all_out:'Tutti OUT', all_in:'Tutti IN', verify_grace:'Verifica grace', snap:'Snapshot'
-      };
+      const map={list:'Lista trigger → Log',ka_on:`KA ON ${params?.name||''} (${params?.minutes||''}m)`,ka_off:`KA OFF ${params?.name||''}`,all_out:'Tutti OUT',all_in:'Tutti IN',verify_grace:'Verifica grace',snap:'Snapshot'};
       if(statusId) setStatus(statusId, (map[op]||'OK')+' ✓', true);
       if(['all_out','all_in','verify_grace','snap'].includes(op)) try{ window.dispatchEvent(new Event('refreshDashboard')); }catch(_){}
     }else{
@@ -311,64 +293,16 @@ async function refreshNow(){
   if(ACTIVE_TAB==='log')     loadErrors();
   if(ACTIVE_TAB==='energy')  renderEnergyPage(MODEL);
   if(ACTIVE_TAB==='tests')   refreshTestsPage();
+  if(ACTIVE_TAB==='cruscotto') renderIssuesMiniInDashboard();
 }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
-   wire();
-   await refreshNow();
-+  // Assicura che la pagina Test abbia subito un contenuto
-+  try { await window.refreshTestsPage(true); } catch(_){}
-   REFRESH_TIMER=setInterval(refreshNow,60000);
-   document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshNow(); });
-   window.addEventListener('online',refreshNow);
-   window.addEventListener('refreshDashboard',refreshNow);
- });
-
-// Mini riassunto issues per Cruscotto (riusa classifier già presente)
-async function renderIssuesMiniInDashboard(){
-  try{
-    const r = await jsonpModel('?logs=1');
-    const logs = (r?.logs)||[];
-
-    // Estrai le "issue" come in renderIssuesReport
-    const issues=[];
-    logs.forEach((row, idx)=>{
-      const t = classifyLogCode(row.code);
-      if (t==='FAIL' || t==='ERR'){
-        issues.push({
-          id: (row.code||'ISSUE')+'-'+(logs.length-idx),
-          code: row.code||'',
-          desc: row.desc||'',
-          ts: row.ts
-        });
-      }
-    });
-
-    const card = document.getElementById('issuesSummaryCard');
-    const badge= document.getElementById('issuesCountBadge');
-    const ul   = document.getElementById('issuesMiniList');
-    if(!card || !badge || !ul) return;
-
-    badge.textContent = String(issues.length);
-    ul.innerHTML = '';
-
-    if(issues.length===0){
-      card.style.display = 'none';
-      return;
-    }
-
-    // Mostra il box e le prime 5 righe
-    card.style.display = '';
-    issues.slice(0,5).forEach(it=>{
-      const li = document.createElement('li');
-      li.className = 'issue-row';
-      const sev = (it.code.startsWith('TEST_FAIL') || it.code.indexOf('_ERR')>=0 || it.code.startsWith('ERROR_'))
-        ? '<span class="badge err">Errore</span>' : '<span class="badge warn">Warn</span>';
-      li.innerHTML = `
-        <div class="issue-id">${it.id}</div>
-        <div class="issue-meta"><span>${it.code}</span>${sev}<span class="sub">${fmtTs(it.ts)}</span></div>`;
-      ul.appendChild(li);
-    });
-
-  }catch(_){}
-}
+  wire();
+  await refreshNow();
+  // Popola subito la pagina Test, così non risulta mai vuota
+  try { await window.refreshTestsPage(true); } catch(_){}
+  REFRESH_TIMER=setInterval(refreshNow,60000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshNow(); });
+  window.addEventListener('online',refreshNow);
+  window.addEventListener('refreshDashboard',refreshNow);
+});
