@@ -52,7 +52,11 @@ function navTo(tab){
   if(tab==='log') loadErrors();
   if(tab==='energy') renderEnergyPage(MODEL);
   if(tab==='settings') loadSettingsPage();
-  if(tab==='tests') refreshTestsPage(true);
+  
+-  if(tab==='tests') refreshTestsPage(true);
++  if(tab==='tests')     refreshTestsPage(true);
++  if(tab==='cruscotto') refreshTestsPage(false); // aggiorna il badge riassuntivo (patch 2)
+
 }
 window.navTo=navTo;
 
@@ -306,10 +310,12 @@ async function refreshNow(){
 }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
-  wire();
-  await refreshNow();
-  REFRESH_TIMER=setInterval(refreshNow,60000);
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshNow(); });
-  window.addEventListener('online',refreshNow);
-  window.addEventListener('refreshDashboard',refreshNow);
-});
+   wire();
+   await refreshNow();
++  // Assicura che la pagina Test abbia subito un contenuto
++  try { await window.refreshTestsPage(true); } catch(_){}
+   REFRESH_TIMER=setInterval(refreshNow,60000);
+   document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshNow(); });
+   window.addEventListener('online',refreshNow);
+   window.addEventListener('refreshDashboard',refreshNow);
+ });
