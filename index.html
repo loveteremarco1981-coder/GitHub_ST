@@ -5,53 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
   <title>Automazione • Home</title>
 
+  <!-- No cache -->
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <link rel="stylesheet" href="assets/style.css">
-
-  <!-- STILI LOCALI (ISSUES, TEST, DONUT, BOTTONI, LISTE) -->
-  <style>
-    .tests-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .card{background:rgba(255,255,255,0.05);border-radius:12px;padding:14px}
-    .card-title{font-weight:600;margin-bottom:8px}
-    .tag{margin-left:8px;font-size:.9rem;opacity:.9}
-    .row{display:flex;align-items:center;justify-content:space-between}
-
-    .donut-wrap{display:flex;align-items:center;gap:16px}
-    .donut{
-      --color:#7bd88f;
-      width:110px;height:110px;
-      border-radius:50%;
-      background:conic-gradient(var(--color) var(--pct,0%), #2a3440 0);
-      display:grid;place-items:center;
-      border:6px solid #12161b
-    }
-    .donut .num{font-size:30px;font-weight:700;color:#e8eef4}
-    .donut .lbl{font-size:12px;color:#a7b3bf}
-    .donut.bad{--color:#ff6b6b}
-
-    .issues-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-    .issue-row{display:flex;align-items:center;justify-content:space-between;
-               background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);
-               border-radius:10px;padding:8px 10px}
-    .issue-id{font-weight:600}
-    .issue-meta{display:flex;align-items:center;gap:10px;color:#a7b3bf}
-    .badge{padding:.2rem .5rem;border-radius:999px;font-size:.8rem}
-    .badge.ok{background:#163a2a;color:#7bd88f}
-    .badge.err{background:#3a1b1b;color:#ff6b6b}
-    .badge.warn{background:#3a3416;color:#ffd166}
-
-    .mini{padding:.35rem .7rem;border-radius:10px;background:#1f2a33;color:#e8eef4;
-          border:1px solid rgba(255,255,255,.1)}
-    .mini:hover{background:#26323d}
-
-    .ka-switch{display:flex;gap:6px}
-    .ka-switch .mini{min-width:46px;text-align:center}
-
-    .tests-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-  </style>
+  <link rel="stylesheet" href="assets/style.css?v=oc_v2_3">
 </head>
 
 <body>
@@ -66,7 +25,7 @@
     </div>
 
     <div id="weatherPill" class="weather-pill">
-      <span id="weatherIcon">☀️</span>
+      <span id="weatherIcon" class="w-ico">☀️</span>
       <span id="weatherTemp">--°</span>
       <span class="dot">·</span>
       <span id="weatherWind">-- km/h</span>
@@ -74,60 +33,63 @@
   </header>
 
   <!-- PEOPLE BAR -->
-  <div id="peopleBar" class="people-bar" role="button">
-    <span>Persone</span> <span id="peopleSummary">—</span>
+  <div id="peopleBar" class="people-bar" role="button" tabindex="0" aria-label="Apri Persone">
+    <span>Persone</span>
+    <span id="peopleSummary" class="people-summary">—</span>
   </div>
 
-  <!-- HOME PAGE -->
-  <main id="pageHome" class="page page-active">
+  <!-- ====================== HOME ======================= -->
+  <main id="pageHome" class="page page-active" aria-labelledby="home-title">
     <section class="card energy-card">
       <div class="card-title">Energy</div>
-      <div id="energyValue" class="energy-value">— kWh</div>
+      <div class="energy-value" id="energyValue">— kWh</div>
     </section>
 
     <section class="favorites">
       <div class="fav-grid">
 
-        <button id="btnOverride" class="tile tile-md">
+        <button type="button" id="btnOverride" class="tile tile-md">
           <div class="tile-ico">🛡️</div>
           <div class="tile-txt">Override</div>
-          <div id="lblOverride">Off</div>
+          <div id="lblOverride" class="tile-sub">Off</div>
         </button>
 
-        <button id="btnVacanza" class="tile tile-md">
+        <button type="button" id="btnVacanza" class="tile tile-md">
           <div class="tile-ico">🏖️</div>
           <div class="tile-txt">Vacanza</div>
-          <div id="lblVacanza">Off</div>
+          <div id="lblVacanza" class="tile-sub">Off</div>
         </button>
 
-        <button id="btnPiante" class="tile tile-md">
+        <button type="button" id="btnPiante" class="tile tile-md">
           <div class="tile-ico">🌿</div>
           <div class="tile-txt">Piante</div>
+          <div class="tile-sub">Irriga</div>
         </button>
 
-        <button id="btnAlza" class="tile tile-md">
+        <button type="button" id="btnAlza" class="tile tile-md">
           <div class="tile-ico">🪟</div>
           <div id="lblAlza" class="tile-txt">Alza</div>
+          <div class="tile-sub">Se clicco si abbassa</div>
         </button>
 
       </div>
     </section>
   </main>
 
-  <!-- PERSONE -->
+  <!-- ====================== PERSONE ======================= -->
   <main id="pagePeople" class="page">
     <div class="people-toolbar">
-      <button id="btnStrictLife" class="nav-btn small">⚙️ Strict LIFE</button>
-      <button id="btnMorningHold" class="nav-btn small">⏰ Morning HOLD</button>
+      <button type="button" id="btnStrictLife" class="nav-btn small">⚙️ Strict LIFE</button>
+      <button type="button" id="btnMorningHold" class="nav-btn small">⏰ Morning HOLD</button>
     </div>
 
     <section class="card">
       <div class="card-title">Persone</div>
-      <ul id="peopleList" class="list"></ul>
+      <ul id="peopleList" class="list" aria-live="polite"></ul>
     </section>
   </main>
 
-  <!-- DISPOSITIVI -->
+  <!-- ====================== DEVICES ======================= -->
   <main id="pageDevices" class="page">
     <section class="card">
       <div class="card-title">Telecamere</div>
@@ -138,7 +100,7 @@
     </section>
   </main>
 
-  <!-- LOG -->
+  <!-- ====================== LOG ======================= -->
   <main id="pageLog" class="page">
     <section class="card">
       <div class="card-title">Log (solo errori)</div>
@@ -146,14 +108,13 @@
     </section>
   </main>
 
-  <!-- CRUSCOTTO -->
+  <!-- ====================== CRUSCOTTO ======================= -->
   <main id="pageCruscotto" class="page">
     <section class="cruscotto-grid" id="cruscottoGrid"></section>
 
     <div class="cruscotto-toolbar">
-      <button id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
-      <button id="btnOpenTests" class="nav-btn small">🧪 Test</button>
-      <span id="testStatus" class="tag"></span>
+      <button type="button" id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
+      <button type="button" id="btnOpenTests" class="nav-btn small">🧪 Test</button>
     </div>
 
     <!-- ISSUE SUMMARY -->
@@ -167,7 +128,7 @@
     </section>
   </main>
 
-  <!-- TESTS PAGE -->
+  <!-- ====================== TESTS ======================= -->
   <main id="pageTests" class="page">
     <section class="tests-toolbar">
       <button id="btnBackToCrusc" class="nav-btn small">⬅️ Torna al Cruscotto</button>
@@ -196,7 +157,7 @@
 
           <button class="mini" id="tAllIn">Tutti IN</button>
           <button class="mini" id="tAllOut">Tutti OUT</button>
-          <button class="mini" id="tVerifyGrace">Verifica Grace</button>
+          <button class="mini" id="tVerifyGrace">Verifica grace</button>
           <button class="mini" id="tSnap">Snapshot</button>
         </div>
 
@@ -208,7 +169,6 @@
 
       <div class="card">
         <div class="card-title">Issue Report</div>
-
         <div class="donut-wrap">
           <div id="issueDonut" class="donut">
             <div class="num">0</div>
@@ -219,15 +179,15 @@
             <div style="opacity:.7;font-size:.9rem">Ultime ~200 righe del Log</div>
           </div>
         </div>
-
         <ul id="issuesList" class="issues-list"></ul>
       </div>
 
     </section>
   </main>
 
-  <!-- SETTINGS -->
+  <!-- ====================== SETTINGS ======================= -->
   <main id="pageSettings" class="page">
+
     <section class="card">
       <div class="card-title">Impostazioni</div>
 
@@ -238,7 +198,7 @@
       </div>
 
       <div class="setting-row">
-        <label>Morning HOLD (min)</label>
+        <label>Morning HOLD dopo alba (min)</label>
         <input id="inpHold" type="number"/>
         <button class="mini" id="btnSaveHold">Salva</button>
       </div>
@@ -246,7 +206,7 @@
       <hr class="sep"/>
 
       <div class="setting-row">
-        <label>KA Auto ON</label>
+        <label>KA Auto‑ON</label>
         <select id="selKaAuto">
           <option value="true">TRUE</option>
           <option value="false">FALSE</option>
@@ -300,62 +260,80 @@
       </div>
 
       <div class="setting-row">
-        <label>Grace diurna (min)</label>
+        <label>Grace diurna casa vuota (min)</label>
         <input id="inpEmptyGrace" type="number"/>
         <button class="mini" id="btnSaveEmptyGrace">Salva</button>
       </div>
 
       <div class="setting-row">
-        <label>Piante: intervallo minimo (min)</label>
+        <label>PIANTE — intervallo minimo (min)</label>
         <input id="inpPianteMin" type="number"/>
         <button class="mini" id="btnSavePianteMin">Salva</button>
       </div>
 
-    </section>
-  </main>
+      <hr class="sep"/>
 
-  <!-- ENERGY PAGE -->
-  <main id="pageEnergy" class="page">
-    <section class="card">
-      <div class="card-title">Consumi</div>
-
-      <div class="energy2-grid">
-        <div class="energy2-item">
-          <div class="lbl">Attuale</div>
-          <div id="e2Current" class="val">— kWh</div>
-        </div>
-
-        <div class="energy2-item">
-          <div class="lbl">Oggi</div>
-          <div id="e2Today" class="val">—</div>
-        </div>
-
-        <div class="energy2-item">
-          <div class="lbl">Settimana</div>
-          <div id="e2Week" class="val">—</div>
-        </div>
-
-        <div class="energy2-item">
-          <div class="lbl">Dispositivi offline</div>
-          <div id="e2Offline" class="val">—</div>
-        </div>
+      <div class="setting-row">
+        <label>Override</label>
+        <button class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
+        <span id="lblOverrideState" class="tag">—</span>
       </div>
+
+      <div class="setting-row">
+        <label>Vacanza</label>
+        <button class="mini btn-io" id="btnToggleVacanza">ON/OFF</button>
+        <span id="lblVacanzaState" class="tag">—</span>
+      </div>
+
     </section>
   </main>
 
-  <!-- NAVBAR (FOOTER) -->
-  <footer class="navbar">
-    <button class="nav-btn" data-tab="home">Home</button>
-    <button class="nav-btn" data-tab="people">Persone</button>
-    <button class="nav-btn" data-tab="devices">Dispositivi</button>
-    <button class="nav-btn" data-tab="log">Log</button>
-    <button class="nav-btn" data-tab="cruscotto">Cruscotto</button>
-    <button class="nav-btn" data-tab="energy">Energy</button>
-  </footer>
+  <!-- ====================== ENERGY ======================= -->
+  <main id="pageEnergy" class="page">
+    <section class="energy2-grid">
+
+      <div class="energy2-tile">
+        <div class="e2-icon">⚡</div>
+        <div class="e2-title">Consumo attuale</div>
+        <div id="e2Current" class="e2-value">-- kWh</div>
+      </div>
+
+      <div class="energy2-tile">
+        <div class="e2-icon">📅</div>
+        <div class="e2-title">Oggi</div>
+        <div id="e2Today" class="e2-value">-- kWh</div>
+      </div>
+
+      <div class="energy2-tile">
+        <div class="e2-icon">📊</div>
+        <div class="e2-title">Settimana</div>
+        <div id="e2Week" class="e2-value">-- kWh</div>
+      </div>
+
+      <div class="energy2-tile">
+        <div class="e2-icon">🔌</div>
+        <div class="e2-title">Dispositivi offline</div>
+        <div id="e2Offline" class="e2-value">--</div>
+      </div>
+
+    </section>
+  </main>
 
 </div>
 
-<script src="app.js?v=oc_v2_3"></script>
+<!-- ====================== NAVBAR (ICONE) ======================= -->
+<nav class="bottom-nav" aria-label="Navigazione">
+  <button type="button" data-tab="home" class="nav-btn nav-active">🏠</button>
+  <button type="button" data-tab="people" class="nav-btn">👥</button>
+  <button type="button" data-tab="devices" class="nav-btn">📷</button>
+  <button type="button" data-tab="log" class="nav-btn">📜</button>
+  <button type="button" data-tab="cruscotto" class="nav-btn">📊</button>
+  <button type="button" data-tab="energy" class="nav-btn">⚡</button>
+</nav>
+
+<!-- ====================== JS INCLUDE ======================= -->
+<script src="api.js?v=oc_v2_3"></script>
+<script src="js/app.js?v=oc_v2_3"></script>
 
 </body>
 </html>
