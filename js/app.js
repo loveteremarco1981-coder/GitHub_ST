@@ -6,166 +6,196 @@ let MODEL = null;
 let ACTIVE_TAB = "home";
 let REFRESH_TIMER = null;
 
-const $ = (s) => document.querySelector(s);
+const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 function toast(msg){ try{ console.log(msg); }catch(_){ alert(msg); } }
-if(!window.EXEC_URL){ console.error("EXEC_URL non definito: controlla api.js"); }
+if (!window.EXEC_URL){
+  // Non blocco l'app: solo avviso in console
+  console.error("EXEC_URL non definito: verifica che api.js sia incluso PRIMA di app.js");
+}
 
 /* ===================== FORMATTER ===================== */
 function fmtTs(d){
-  if(!d) return "—";
+  if (!d) return "—";
   const dt = (d instanceof Date) ? d : new Date(d);
-  if(isNaN(dt)) return "—";
+  if (isNaN(dt)) return "—";
   return new Intl.DateTimeFormat("it-IT",{dateStyle:"short",timeStyle:"short"}).format(dt);
 }
+
 function timeOnly(v){
-  if(!v || v==="—") return "—";
-  if(v instanceof Date && !isNaN(v)) return v.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
-  const s=String(v).trim();
-  let m=s.match(/^(\d{1,2}):(\d{2})$/); if(m) return m[1].padStart(2,'0')+":"+m[2];
-  m=s.match(/^(\d{1,2})\.(\d{2})$/);    if(m) return m[1].padStart(2,'0')+":"+m[2];
-  const d=new Date(s); if(!isNaN(d)) return d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
-  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/); if(m) return m[4].padStart(2,'0')+":"+m[5];
+  if (!v || v==="—") return "—";
+  if (v instanceof Date && !isNaN(v)) {
+    return v.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{1,2}):(\d{2})$/);        if (m) return m[1].padStart(2,"0")+":"+m[2];
+      m = s.match(/^(\d{1,2})\.(\d{2})$/);       if (m) return m[1].padStart(2,"0")+":"+m[2];
+  const d = new Date(s);                         if (!isNaN(d)) return d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+      m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/);
+  if (m) return m[4].padStart(2,"0")+":"+m[5];
   return "—";
 }
 
 /* ===================== MODEL (JSONP) ===================== */
 function jsonpModel(qs=""){
-  const base=window.EXEC_URL;
+  const base = window.EXEC_URL;
   return new Promise((resolve,reject)=>{
     try{
       const cb = "cb_model_"+Math.random().toString(36).slice(2);
-      window[cb] = (data)=>{ try{ delete window[cb]; }catch(_){ } resolve(data); };
+      // pulizia sicura del callback
+      const cleanup = () => { try{ delete window[cb]; }catch(_){ } };
+      window[cb] = (data)=>{ cleanup(); resolve(data); };
       const s = document.createElement("script");
       s.src = `${base}${qs}${qs.includes("?")?"&":"?"}callback=${cb}&t=${Date.now()}`;
-      s.onerror = (e)=>{ try{ delete window[cb]; }catch(_){ } reject(e); };
+      s.onerror = (e)=>{ cleanup(); reject(e); };
       document.body.appendChild(s);
       setTimeout(()=>{ try{s.remove();}catch(_){ } }, 8000);
     }catch(e){ reject(e); }
   });
 }
+
 async function fetchModelOnce(){
   const m = await jsonpModel();
-  MODEL = (m && typeof m === "object") ? m : null;
-  if(!MODEL) throw new Error("MODEL vuoto");
+  MODEL = (m && typeof m==="object") ? m : null;
+  window.__lastModel__ = MODEL; // comodo per la diagnostica in Console
+  if (!MODEL) throw new Error("MODEL vuoto");
   renderHome(MODEL);
   renderCruscotto(MODEL);
   renderEnergyPage(MODEL);
   return true;
 }
+
 async function loadModelWithRetry(){
-  const delays=[0,2000,5000];
-  for(const d of delays){
-    try{ if(d) await new Promise(r=>setTimeout(r,d)); return await fetchModelOnce(); }
-    catch(e){ if(d===delays[delays.length-1]) console.error("MODEL failed",e); }
+  const delays = [0, 2000, 5000];
+  for (const d of delays){
+    try{
+      if (d) await new Promise(r=>setTimeout(r,d));
+      return await fetchModelOnce();
+    }catch(e){
+      if (d===delays[delays.length-1]) console.error("MODEL failed", e);
+    }
   }
   return false;
 }
 
 /* ===================== NAVIGAZIONE ===================== */
 function setBadgeState(st){
-  const el=$("#stateBadge"); if(!el) return;
-  el.className="state-badge";
-  if(!st){ el.textContent="—"; return; }
-  const s=String(st).toUpperCase();
-  el.classList.add(s.startsWith("COMFY")?"ok":"alert");
+  const el = $("#stateBadge"); if(!el) return;
+  el.className = "state-badge";
+  if (!st){ el.textContent = "—"; return; }
+  const s = String(st).toUpperCase();
+  el.classList.add(s.startsWith("COMFY") ? "ok" : "alert");
   el.textContent = s.replace("_"," ");
 }
+
 function navTo(tab){
   ACTIVE_TAB = tab;
-  const map={
+  const map = {
     home:"#pageHome", people:"#pagePeople", devices:"#pageDevices",
     log:"#pageLog", cruscotto:"#pageCruscotto", energy:"#pageEnergy",
     settings:"#pageSettings", tests:"#pageTests"
   };
   $$(".page").forEach(p=>p.classList.remove("page-active"));
-  if(map[tab]) $(map[tab]).classList.add("page-active");
-  /* aggiorna nav attiva (solo bottom-nav: ha data-tab) */
-  $$('.bottom-nav .nav-btn').forEach(b=>b.classList.remove('nav-active'));
-  const nb = document.querySelector(`.bottom-nav .nav-btn[data-tab="${tab}"]`);
-  if(nb) nb.classList.add('nav-active');
+  if (map[tab]) $(map[tab]).classList.add("page-active");
 
-  /* on enter */
-  if(tab==="people") loadPeople();
-  if(tab==="devices") loadCams();
-  if(tab==="log") loadErrors();
-  if(tab==="tests") refreshTestsPage(true);
-  if(tab==="cruscotto") renderIssuesMiniInDashboard();
-  if(tab==="energy") renderEnergyPage(MODEL);
+  // Footer a icone (Versione B)
+  $$(".bottom-nav .nav-btn").forEach(b=>b.classList.remove("nav-active"));
+  const nb = document.querySelector(`.bottom-nav .nav-btn[data-tab="${tab}"]`);
+  if (nb) nb.classList.add("nav-active");
+
+  // On enter
+  if (tab==="people")    loadPeople();
+  if (tab==="devices")   loadCams();
+  if (tab==="log")       loadErrors();
+  if (tab==="tests")     refreshTestsPage(true);
+  if (tab==="cruscotto") renderIssuesMiniInDashboard();
+  if (tab==="energy")    renderEnergyPage(MODEL);
 }
 window.navTo = navTo;
 
 /* ===================== HOME/CRUSCOTTO/ENERGY ===================== */
 function renderHome(m){
-  if(!m) return;
+  if (!m) return;
   setBadgeState(m.state);
-  if(m.weather){
-    $("#weatherIcon")?.textContent = m.weather.iconEmoji || "🌤";
-    $("#weatherTemp")?.textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
-    $("#weatherWind")?.textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
-  }
-  const kwh = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
-  $("#energyValue")?.textContent = kwh;
 
-  $("#lblOverride")?.textContent = m.override ? "On" : "Off";
-  $("#lblVacanza")?.textContent  = m.vacanza ? "On" : "Off";
+  if (m.weather){
+    if ($("#weatherIcon")) $("#weatherIcon").textContent = (m.weather.iconEmoji || "🌤");
+    if ($("#weatherTemp")) $("#weatherTemp").textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
+    if ($("#weatherWind")) $("#weatherWind").textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
+  }
+
+  const kwh = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
+  if ($("#energyValue")) $("#energyValue").textContent = kwh;
+
+  if ($("#lblOverride")) $("#lblOverride").textContent = (m.override ? "On" : "Off");
+  if ($("#lblVacanza"))  $("#lblVacanza").textContent  = (m.vacanza ? "On" : "Off");
   $("#btnOverride")?.classList.toggle("on", !!m.override);
   $("#btnVacanza")?.classList.toggle("on", !!m.vacanza);
 
   const st = String(m.state||"").toUpperCase();
   const isUpGuess = (st==="COMFY_DAY");
-  $("#lblAlza")?.textContent = isUpGuess ? "Abbassa" : "Alza";
+  if ($("#lblAlza")) $("#lblAlza").textContent = isUpGuess ? "Abbassa" : "Alza";
 
-  const ppl = m.people||[];
-  $("#peopleSummary")?.textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
+  const ppl = m.people || [];
+  if ($("#peopleSummary")) $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
 }
+
 function camsText(m){
-  const s=String(m?.state||"").toUpperCase();
-  if(s.startsWith("SECURITY")) return "ON · ON";
-  if(s==="COMFY_NIGHT")        return "OFF · ON";
+  const s = String(m?.state||"").toUpperCase();
+  if (s.startsWith("SECURITY")) return "ON · ON";
+  if (s==="COMFY_NIGHT")       return "OFF · ON";
   return "OFF · OFF";
 }
+
 function renderCruscotto(m){
-  const el=$("#cruscottoGrid"); if(!el||!m) return;
-  const tiles=[
+  const el = $("#cruscottoGrid"); if (!el || !m) return;
+  const tiles = [
     {key:'state',    title:'Stato',      icon:'🟢', value:(m.state||'—')},
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
-    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'),   value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
+    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'),     value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
     {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba)},
     {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto)},
     {key:'energy',   title:'Energy',     icon:'⚡', value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--')},
     {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`}
   ];
+
   el.innerHTML = tiles.map(t=>`
     <div class="cr-tile" data-key="${t.key}">
       <div class="cr-icon">${t.icon}</div>
       <div class="cr-title">${t.title}</div>
       <div class="cr-value">${t.value}</div>
     </div>`).join("");
+
+  // Shortcut verso pagina Energy
   el.querySelectorAll('.cr-tile[data-key="energy"]').forEach(t=>{
-    t.style.cursor="pointer"; t.addEventListener("click",()=>navTo("energy"));
+    t.style.cursor = "pointer";
+    t.addEventListener("click", ()=>navTo("energy"));
   });
+
   renderIssuesMiniInDashboard();
 }
+
 function renderEnergyPage(m){
-  if(!m) return;
-  $("#e2Current")?.textContent = (m.energy?.kwh!=null?`${m.energy.kwh} kWh`:"-- kWh");
-  $("#e2Today") ?.textContent  = (m.energy?.kwh!=null? (m.energy.kwh*0.6).toFixed(1) :"--");
-  $("#e2Week")  ?.textContent  = (m.energy?.kwh!=null? (m.energy.kwh*4).toFixed(1) :"--");
-  $("#e2Offline")?.textContent = (m.devicesOfflineCount!=null?m.devicesOfflineCount:"--");
+  if (!m) return;
+  if ($("#e2Current")) $("#e2Current").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "-- kWh");
+  if ($("#e2Today"))  $("#e2Today").textContent   = (m.energy?.kwh!=null ? (m.energy.kwh*0.6).toFixed(1) : "--");
+  if ($("#e2Week"))   $("#e2Week").textContent    = (m.energy?.kwh!=null ? (m.energy.kwh*4).toFixed(1) : "--");
+  if ($("#e2Offline"))$("#e2Offline").textContent = (m.devicesOfflineCount!=null ? m.devicesOfflineCount : "--");
 }
 
 /* ===================== PEOPLE / CAMS / LOG ===================== */
 async function loadPeople(){
   try{
-    const r=await jsonpModel("?people=1");
-    const arr=r?.people||[];
-    const ul=$("#peopleList"); if(!ul) return; ul.innerHTML="";
-    for(const p of arr){
-      const ts = p.ts ? fmtTs(p.ts) : (p.tsText||"—");
-      const li=document.createElement("li");
+    const r = await jsonpModel("?people=1");
+    const arr = r?.people || [];
+    const ul = $("#peopleList"); if (!ul) return;
+    ul.innerHTML = "";
+
+    for (const p of arr){
+      const ts = p.ts ? fmtTs(p.ts) : (p.tsText || "—");
+      const li = document.createElement("li");
       li.innerHTML = `
         <div>${p.name}</div>
         <div class="sub">${p.lastEvent||"—"} • ${ts}</div>
@@ -174,25 +204,35 @@ async function loadPeople(){
     }
   }catch(_){}
 }
+
 async function loadCams(){
   try{
-    const r=await jsonpModel("?cams=1");
-    const iOn=!!r?.interne, eOn=!!r?.esterne;
-    const ci=$("#camInterne"), ce=$("#camEsterne");
-    if(ci){ ci.textContent=iOn?"ON":"OFF"; ci.className="badge "+(iOn?"ok":"err"); }
-    if(ce){ ce.textContent=eOn?"ON":"OFF"; ce.className="badge "+(eOn?"ok":"err"); }
+    const r = await jsonpModel("?cams=1");
+    const iOn = !!r?.interne;
+    const eOn = !!r?.esterne;
+    const ci = $("#camInterne");
+    const ce = $("#camEsterne");
+    if (ci){ ci.textContent = iOn ? "ON" : "OFF"; ci.className = "badge "+(iOn?"ok":"err"); }
+    if (ce){ ce.textContent = eOn ? "ON" : "OFF"; ce.className = "badge "+(eOn?"ok":"err"); }
   }catch(_){}
 }
+
 async function loadErrors(){
   try{
-    const r=await jsonpModel("?logs=1");
-    const ul=$("#logErrors"); if(!ul) return; ul.innerHTML="";
-    const arr=(r?.logs||[])
+    const r = await jsonpModel("?logs=1");
+    const ul = $("#logErrors"); if (!ul) return;
+    ul.innerHTML = "";
+
+    const arr = (r?.logs || [])
       .filter(e => (e.code.includes("ERR") || e.code.includes("ERROR")))
-      .filter(e => !String(e.code).startsWith("ROUTER_")); // purga residui router
-    if(arr.length===0){ const li=document.createElement("li"); li.textContent="Nessun errore"; ul.appendChild(li); return; }
+      .filter(e => !String(e.code).startsWith("ROUTER_")); // purga residui Router
+
+    if (arr.length===0){
+      const li = document.createElement("li"); li.textContent = "Nessun errore"; ul.appendChild(li); return;
+    }
+
     arr.forEach(e=>{
-      const li=document.createElement("li");
+      const li = document.createElement("li");
       li.innerHTML = `<div>${e.code}</div><div class="sub">${e.desc||""} • ${fmtTs(e.ts)}</div>`;
       ul.appendChild(li);
     });
@@ -201,54 +241,79 @@ async function loadErrors(){
 
 /* ===================== CLASSIFY & ISSUES ===================== */
 function classifyLogCode(code){
-  const c=String(code||"");
-  if(c.startsWith("TEST_PASS")) return "PASS";
-  if(c.startsWith("TEST_SKIP")) return "SKIP";
-  if(c.startsWith("TEST_FAIL")) return "FAIL";
-  if(c.includes("_ERR") || c.startsWith("ERROR_")) return "ERR";
-  if(c.endsWith("_BLOCK") || c.endsWith("_IGNORED")) return "WARN";
+  const c = String(code||"");
+  if (c.startsWith("TEST_PASS")) return "PASS";
+  if (c.startsWith("TEST_SKIP")) return "SKIP";
+  if (c.startsWith("TEST_FAIL")) return "FAIL";
+  if (c.includes("_ERR") || c.startsWith("ERROR_")) return "ERR";
+  if (c.endsWith("_BLOCK") || c.endsWith("_IGNORED")) return "WARN";
   return "";
 }
+
 function renderIssuesReport(logs){
-  const issues=[];
-  (logs||[]).forEach((r,idx)=>{
-    const t=classifyLogCode(r.code);
-    if(t==="FAIL"||t==="ERR") issues.push({id:`ISSUE-${(logs.length-idx)}`,code:r.code,desc:r.desc,ts:r.ts});
+  const issues = [];
+  (logs || []).forEach((r,idx)=>{
+    const t = classifyLogCode(r.code);
+    if (t==="FAIL" || t==="ERR"){
+      issues.push({ id:`ISSUE-${(logs.length-idx)}`, code:r.code, desc:r.desc, ts:r.ts });
+    }
   });
-  const donut=$("#issueDonut"); const cnt=issues.length;
-  if(donut){
-    donut.style.setProperty("--pct", cnt>0?"100%":"0%");
+
+  const donut = $("#issueDonut");
+  const cnt   = issues.length;
+
+  if (donut){
+    donut.style.setProperty("--pct", cnt>0 ? "100%" : "0%");
     donut.classList.toggle("bad", cnt>0);
-    const num=donut.querySelector(".num"); if(num) num.textContent=String(cnt);
+    const num = donut.querySelector(".num"); if (num) num.textContent = String(cnt);
   }
-  const sum=$("#issueSummary"); if(sum) sum.textContent=(cnt===0?"Nessun problema recente":`${cnt} problemi recenti`);
-  const ul=$("#issuesList"); if(!ul) return; ul.innerHTML="";
-  if(cnt===0){ const li=document.createElement("li"); li.className="issue-row"; li.innerHTML=`<div class="issue-id">Tutto OK</div><span class="badge ok">OK</span>`; ul.appendChild(li); return; }
+  const sum = $("#issueSummary");
+  if (sum) sum.textContent = (cnt===0 ? "Nessun problema recente" : `${cnt} problemi recenti`);
+
+  const ul = $("#issuesList"); if (!ul) return;
+  ul.innerHTML = "";
+
+  if (cnt===0){
+    const li = document.createElement("li");
+    li.className = "issue-row";
+    li.innerHTML = `<div class="issue-id">Tutto OK</div><span class="badge ok">OK</span>`;
+    ul.appendChild(li);
+    return;
+  }
+
   issues.slice(0,12).forEach(it=>{
-    const sev=(it.code.includes("_ERR")||it.code.startsWith("ERROR_"))?"badge err":"badge warn";
-    const li=document.createElement("li"); li.className="issue-row";
+    const sev = (it.code.includes("_ERR") || it.code.startsWith("ERROR_")) ? "badge err" : "badge warn";
+    const li  = document.createElement("li");
+    li.className = "issue-row";
     li.innerHTML = `<div class="issue-id">${it.id}</div>
       <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
     ul.appendChild(li);
   });
 }
+
 async function renderIssuesMiniInDashboard(){
   try{
-    const r=await jsonpModel("?logs=1"); const logs=r?.logs||[];
-    const issues=logs.filter(l=>{
-      const t=classifyLogCode(l.code);
-      return (t==="ERR"||t==="FAIL");
-    }).filter(l=>!String(l.code).startsWith("ROUTER_")); // no router
-    const card=$("#issuesSummaryCard"), badge=$("#issuesCountBadge"), ul=$("#issuesMiniList");
-    if(!card||!badge||!ul) return;
-    badge.textContent=String(issues.length);
-    ul.innerHTML="";
-    if(issues.length===0){ card.style.display="none"; return; }
-    card.style.display="";
+    const r    = await jsonpModel("?logs=1");
+    const logs = r?.logs || [];
+    const issues = logs
+      .filter(l => { const t = classifyLogCode(l.code); return (t==="ERR" || t==="FAIL"); })
+      .filter(l => !String(l.code).startsWith("ROUTER_"));
+
+    const card  = $("#issuesSummaryCard");
+    const badge = $("#issuesCountBadge");
+    const ul    = $("#issuesMiniList");
+    if (!card || !badge || !ul) return;
+
+    badge.textContent = String(issues.length);
+    ul.innerHTML = "";
+    if (issues.length===0){ card.style.display="none"; return; }
+
+    card.style.display = "";
     issues.slice(0,5).forEach(it=>{
-      const sev=(it.code.includes("_ERR")?"badge err":"badge warn");
-      const li=document.createElement("li"); li.className="issue-row";
-      li.innerHTML=`<div class="issue-id">${it.code}</div>
+      const sev = (it.code.includes("_ERR") ? "badge err" : "badge warn");
+      const li  = document.createElement("li");
+      li.className = "issue-row";
+      li.innerHTML = `<div class="issue-id">${it.code}</div>
         <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
       ul.appendChild(li);
     });
@@ -257,14 +322,19 @@ async function renderIssuesMiniInDashboard(){
 
 /* ===================== TESTS PAGE ===================== */
 async function refreshTestsPage(force=false){
-  try{ const v=await api.version(); if(v?.ok) $("#backendVersion")?.textContent = v.version; }catch(_){}
-  try{ const r=await jsonpModel("?logs=1"); renderIssuesReport(r?.logs||[]); }catch(_){}
+  try{
+    const v = await api.version();
+    if (v?.ok && $("#backendVersion")) $("#backendVersion").textContent = v.version;
+  }catch(_){}
+  try{
+    const r = await jsonpModel("?logs=1");
+    renderIssuesReport(r?.logs || []);
+  }catch(_){}
 }
 window.refreshTestsPage = refreshTestsPage;
 
 /* ===================== SETTINGS PAGE (completa) ===================== */
 async function loadSettingsPage(){
-  // Carica valori correnti
   try{
     const [
       strict, hold, kaa, exitG, exitC, logDays,
@@ -273,10 +343,10 @@ async function loadSettingsPage(){
       api.getStrict(), api.getHold(), api.getKaAuto(),
       api.getExitGuard(), api.getExitConfirm(), api.getLogRetention(),
       api.getLifeTimeout(), api.getDebounceIn(), api.getDebounceOut(),
-      api.getEmptyGrace(), api.getPianteMinInt(), apiFetch('get_flags')
+      api.getEmptyGrace(), api.getPianteMinInt(), apiFetch("get_flags")
     ]);
 
-    const setVal=(id,v)=>{ const el=$("#"+id); if(el) el.value=(v!=null?v:""); };
+    const setVal = (id,v)=>{ const el=$("#"+id); if (el) el.value = (v!=null ? v : ""); };
     setVal("inpStrict",       strict?.strict);
     setVal("inpHold",         hold?.hold);
     $("#selKaAuto")?.querySelectorAll("option")?.forEach(o=>{
@@ -285,119 +355,145 @@ async function loadSettingsPage(){
     setVal("inpExitGuard",    exitG?.exit_guard);
     setVal("inpExitConfirm",  exitC?.exit_confirm);
     setVal("inpLogRetention", logDays?.days);
-
     setVal("inpLifeTimeout",  lifeTo?.life_timeout);
     setVal("inpDebIn",        debIn?.debounce_in);
     setVal("inpDebOut",       debOut?.debounce_out);
     setVal("inpEmptyGrace",   grace?.empty_grace);
     setVal("inpPianteMin",    pMin?.min);
 
-    if($("#lblOverrideState")) $("#lblOverrideState").textContent = (flags?.override?'ON':'OFF');
-    if($("#lblVacanzaState"))  $("#lblVacanzaState").textContent  = (flags?.vacanza?'ON':'OFF');
-  }catch(e){ console.error("loadSettingsPage", e); }
+    if ($("#lblOverrideState")) $("#lblOverrideState").textContent = (flags?.override ? "ON" : "OFF");
+    if ($("#lblVacanzaState"))  $("#lblVacanzaState").textContent  = (flags?.vacanza  ? "ON" : "OFF");
+  }catch(e){
+    console.error("loadSettingsPage", e);
+  }
 
-  // Binding salvataggi (idempotente)
-  const bind=(id,fn)=>{ const b=$("#"+id); if(b && !b._wired){ b._wired=true; b.onclick=fn; } };
+  // Binding idempotente
+  const bind = (id,fn)=>{ const b=$("#"+id); if(b && !b._wired){ b._wired=true; b.onclick=fn; } };
 
-  bind("btnSaveStrict",      async()=>{ const v=+$("#inpStrict").value;       const r=await api.setStrict(v);       toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveHold",        async()=>{ const v=+$("#inpHold").value;         const r=await api.setHold(v);         toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveStrict",      async()=>{ const v=+$("#inpStrict").value;       const r=await api.setStrict(v);        toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveHold",        async()=>{ const v=+$("#inpHold").value;         const r=await api.setHold(v);          toast(r.ok?'Salvato':'Errore'); });
   bind("btnSaveKaAuto",      async()=>{ const v=$("#selKaAuto").value;        const r=await api.setKaAuto(v==='true'); toast(r.ok?'Salvato':'Errore'); });
 
-  bind("btnSaveExitGuard",   async()=>{ const v=+$("#inpExitGuard").value;    const r=await api.setExitGuard(v);    toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveExitConfirm", async()=>{ const v=+$("#inpExitConfirm").value;  const r=await api.setExitConfirm(v);  toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveExitGuard",   async()=>{ const v=+$("#inpExitGuard").value;    const r=await api.setExitGuard(v);     toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveExitConfirm", async()=>{ const v=+$("#inpExitConfirm").value;  const r=await api.setExitConfirm(v);   toast(r.ok?'Salvato':'Errore'); });
 
-  bind("btnSaveLogRetention",async()=>{ const v=+$("#inpLogRetention").value; const r=await api.setLogRetention(v); toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveLogRetention",async()=>{ const v=+$("#inpLogRetention").value; const r=await api.setLogRetention(v);  toast(r.ok?'Salvato':'Errore'); });
   bind("btnPruneLogs",       async()=>{ const r=await api.pruneLogs();         toast(r.ok?'Log ripulito':'Errore'); });
 
-  bind("btnSaveLifeTimeout", async()=>{ const v=+$("#inpLifeTimeout").value;  const r=await api.setLifeTimeout(v);  toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveDebIn",       async()=>{ const v=+$("#inpDebIn").value;        const r=await api.setDebounceIn(v);   toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveDebOut",      async()=>{ const v=+$("#inpDebOut").value;       const r=await api.setDebounceOut(v);  toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveEmptyGrace",  async()=>{ const v=+$("#inpEmptyGrace").value;   const r=await api.setEmptyGrace(v);   toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSavePianteMin",   async()=>{ const v=+$("#inpPianteMin").value;    const r=await api.setPianteMinInt(v); toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveLifeTimeout", async()=>{ const v=+$("#inpLifeTimeout").value;  const r=await api.setLifeTimeout(v);   toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveDebIn",       async()=>{ const v=+$("#inpDebIn").value;        const r=await api.setDebounceIn(v);    toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveDebOut",      async()=>{ const v=+$("#inpDebOut").value;       const r=await api.setDebounceOut(v);   toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSaveEmptyGrace",  async()=>{ const v=+$("#inpEmptyGrace").value;   const r=await api.setEmptyGrace(v);    toast(r.ok?'Salvato':'Errore'); });
+  bind("btnSavePianteMin",   async()=>{ const v=+$("#inpPianteMin").value;    const r=await api.setPianteMinInt(v);  toast(r.ok?'Salvato':'Errore'); });
 
-  bind("btnToggleOverride",  async()=>{ const f=await apiFetch('get_flags'); const cur=!!(f?.ok&&f.override); const r=await apiFetch('set_override',{value:String(!cur).toUpperCase()}); toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
-  bind("btnToggleVacanza",   async()=>{ const f=await apiFetch('get_flags'); const cur=!!(f?.ok&&f.vacanza);  const r=await apiFetch('set_vacanza',{value:String(!cur).toUpperCase()});  toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
+  bind("btnToggleOverride",  async()=>{ const f=await apiFetch("get_flags"); const cur=!!(f?.ok&&f.override); const r=await apiFetch("set_override",{value:String(!cur).toUpperCase()}); toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
+  bind("btnToggleVacanza",   async()=>{ const f=await apiFetch("get_flags"); const cur=!!(f?.ok&&f.vacanza);  const r=await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});  toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
 }
 
 /* ===================== TEST QUICK API ===================== */
-function setStatus(id,text,ok=true){ const el=$("#"+id); if(!el) return; el.textContent=text||""; el.style.color=ok?'#7bd88f':'#ff6b6b'; }
-async function runQuick(op, params={}, btnId=null, statusId='diagStatus'){
-  if(statusId) setStatus(statusId,`Esecuzione: ${op}…`,true);
-  const btn = btnId?$("#"+btnId):null; if(btn) btn.disabled=true;
+function setStatus(id,text,ok=true){
+  const el = $("#"+id); if (!el) return;
+  el.textContent = (text || "");
+  el.style.color = ok ? "#7bd88f" : "#ff6b6b";
+}
+
+async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
+  if (statusId) setStatus(statusId, `Esecuzione: ${op}…`, true);
+  const btn = btnId ? $("#"+btnId) : null;
+  if (btn) btn.disabled = true;
+
   try{
     const res = await api.quick(op, params);
-    if(res && res.ok){
-      const map={list:'Lista trigger → Log', ka_on:`KA ON ${params?.name||''} (${params?.minutes||''}m)`, ka_off:`KA OFF ${params?.name||''}`, all_out:'Tutti OUT', all_in:'Tutti IN', verify_grace:'Verifica grace', snap:'Snapshot'};
-      if(statusId) setStatus(statusId, (map[op]||'OK')+' ✓', true);
-      if(['all_out','all_in','verify_grace','snap'].includes(op)) try{ window.dispatchEvent(new Event('refreshDashboard')); }catch(_){}
+    if (res && res.ok){
+      const map = {
+        list:"Lista trigger → Log",
+        ka_on:`KA ON ${params?.name||""} (${params?.minutes||""}m)`,
+        ka_off:`KA OFF ${params?.name||""}`,
+        all_out:"Tutti OUT", all_in:"Tutti IN", verify_grace:"Verifica grace", snap:"Snapshot"
+      };
+      if (statusId) setStatus(statusId, (map[op]||"OK")+" ✓", true);
+      if (["all_out","all_in","verify_grace","snap"].includes(op)){
+        try{ window.dispatchEvent(new Event("refreshDashboard")); }catch(_){}
+      }
     }else{
-      if(statusId) setStatus(statusId,'Errore: '+(res?.error||'unknown'),false);
+      if (statusId) setStatus(statusId, "Errore: "+(res?.error||"unknown"), false);
     }
   }catch(e){
-    if(statusId) setStatus(statusId,'Errore rete: '+e.message,false);
-  }finally{ if(btn) btn.disabled=false; }
+    if (statusId) setStatus(statusId, "Errore rete: "+e.message, false);
+  }finally{
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ===================== REFRESH CICLICO ===================== */
 async function refreshNow(){
   await loadModelWithRetry();
-  if(ACTIVE_TAB==='people') loadPeople();
-  if(ACTIVE_TAB==='devices') loadCams();
-  if(ACTIVE_TAB==='log') loadErrors();
-  if(ACTIVE_TAB==='tests') refreshTestsPage();
-  if(ACTIVE_TAB==='cruscotto') renderIssuesMiniInDashboard();
-  if(ACTIVE_TAB==='energy') renderEnergyPage(MODEL);
+  if (ACTIVE_TAB==="people")    loadPeople();
+  if (ACTIVE_TAB==="devices")   loadCams();
+  if (ACTIVE_TAB==="log")       loadErrors();
+  if (ACTIVE_TAB==="tests")     refreshTestsPage();
+  if (ACTIVE_TAB==="cruscotto") renderIssuesMiniInDashboard();
+  if (ACTIVE_TAB==="energy")    renderEnergyPage(MODEL);
 }
 
 /* ===================== WIRING ===================== */
 function wire(){
-  /* Navbar (icone) */
-  $$('.bottom-nav .nav-btn').forEach(b=> b.addEventListener("click", ()=>navTo(b.getAttribute("data-tab"))));
+  // Navbar (icone)
+  $$(".bottom-nav .nav-btn").forEach(b=>{
+    b.addEventListener("click", ()=>navTo(b.getAttribute("data-tab")));
+  });
 
-  /* People bar */
+  // People bar
   $("#peopleBar")?.addEventListener("click", ()=>navTo("people"));
 
-  /* Azioni Home */
+  // Home actions
   $("#btnOverride")?.addEventListener("click", async()=>{
-    const f1=await apiFetch('get_flags'); const cur=!!(f1?.ok&&f1.override);
-    await apiFetch('set_override',{value:String(!cur).toUpperCase()});
-    toast('Override: '+(!cur?'On':'Off')); refreshNow();
-  });
-  $("#btnVacanza")?.addEventListener("click", async()=>{
-    const f1=await apiFetch('get_flags'); const cur=!!(f1?.ok&&f1.vacanza);
-    await apiFetch('set_vacanza',{value:String(!cur).toUpperCase()});
-    toast('Vacanza: '+(!cur?'On':'Off')); refreshNow();
-  });
-  $("#btnPiante")?.addEventListener("click", async()=>{
-    const r=await apiFetch('piante'); toast(r?.ok?'Piante avviato':'Piante bloccate');
-  });
-  $("#btnAlza")?.addEventListener("click", async()=>{
-    const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
-    if(goDown){ await apiFetch('abbassa_tutto'); $("#lblAlza").textContent='Alza'; }
-    else      { await apiFetch('alza_tutto');    $("#lblAlza").textContent='Abbassa'; }
+    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.override);
+    await apiFetch("set_override",{value:String(!cur).toUpperCase()});
+    toast("Override: "+(!cur?"On":"Off")); refreshNow();
   });
 
-  /* Cruscotto toolbar */
+  $("#btnVacanza")?.addEventListener("click", async()=>{
+    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.vacanza);
+    await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});
+    toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
+  });
+
+  $("#btnPiante")?.addEventListener("click", async()=>{
+    const r=await apiFetch("piante"); toast(r?.ok?"Piante avviato":"Piante bloccate");
+  });
+
+  $("#btnAlza")?.addEventListener("click", async()=>{
+    const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
+    if (goDown){ await apiFetch("abbassa_tutto"); $("#lblAlza").textContent="Alza"; }
+    else       { await apiFetch("alza_tutto");    $("#lblAlza").textContent="Abbassa"; }
+  });
+
+  // Cruscotto toolbar
   $("#btnOpenSettings")?.addEventListener("click", ()=>navTo("settings"));
   $("#btnOpenTests")?.addEventListener("click",     ()=>navTo("tests"));
 
-  /* Test page top */
+  // Test page top
   $("#btnBackToCrusc")?.addEventListener("click",   ()=>navTo("cruscotto"));
   $("#btnRefreshReport")?.addEventListener("click", ()=>refreshTestsPage(true));
   $("#btnRunFullTestTop")?.addEventListener("click", async()=>{
-    try{ const r=await apiFetch('diag_full_test'); $("#testSuiteStatusTop").textContent = r?.ok?'OK ✓':'Errore'; }
-    catch(e){ $("#testSuiteStatusTop").textContent='Errore rete'; }
+    try{
+      const r = await apiFetch("diag_full_test");
+      const el= $("#testSuiteStatusTop"); if (el) el.textContent = (r?.ok?"OK ✓":"Errore");
+    }catch(e){
+      const el= $("#testSuiteStatusTop"); if (el) el.textContent = "Errore rete";
+    }
   });
 
-  /* Quick test buttons */
+  // Quick test buttons
   const bind=(id,fn)=>{ const el=$("#"+id); if(el) el.onclick=fn; };
-  bind("tQuickList",   ()=>runQuick('list',{},  "tQuickList","diagStatus"));
-  bind("tKaOn",        ()=>runQuick('ka_on',{name:'marco',minutes:5}, "tKaOn","diagStatus"));
-  bind("tKaOff",       ()=>runQuick('ka_off',{name:'marco'}, "tKaOff","diagStatus"));
-  bind("tAllIn",       ()=>runQuick('all_in',{}, "tAllIn","diagStatus"));
-  bind("tAllOut",      ()=>runQuick('all_out',{}, "tAllOut","diagStatus"));
-  bind("tVerifyGrace", ()=>runQuick('verify_grace',{}, "tVerifyGrace","diagStatus"));
-  bind("tSnap",        ()=>runQuick('snap',{}, "tSnap","diagStatus"));
+  bind("tQuickList",   ()=>runQuick("list",{},  "tQuickList","diagStatus"));
+  bind("tKaOn",        ()=>runQuick("ka_on",{name:"marco",minutes:5}, "tKaOn","diagStatus"));
+  bind("tKaOff",       ()=>runQuick("ka_off",{name:"marco"}, "tKaOff","diagStatus"));
+  bind("tAllIn",       ()=>runQuick("all_in",{}, "tAllIn","diagStatus"));
+  bind("tAllOut",      ()=>runQuick("all_out",{}, "tAllOut","diagStatus"));
+  bind("tVerifyGrace", ()=>runQuick("verify_grace",{}, "tVerifyGrace","diagStatus"));
+  bind("tSnap",        ()=>runQuick("snap",{}, "tSnap","diagStatus"));
 }
 
 /* ===================== DOM READY ===================== */
@@ -405,8 +501,8 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   wire();
   await refreshNow();
   try{ await refreshTestsPage(true); }catch(_){}
-  REFRESH_TIMER=setInterval(refreshNow, 60000);
+  REFRESH_TIMER = setInterval(refreshNow, 60000);
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refreshNow(); });
-  window.addEventListener("online",refreshNow);
-  window.addEventListener("refreshDashboard",refreshNow);
+  window.addEventListener("online", refreshNow);
+  window.addEventListener("refreshDashboard", refreshNow);
 });
