@@ -156,7 +156,7 @@
       <span id="testStatus" class="tag"></span>
     </div>
 
-    <!-- Issue summary -->
+    <!-- ISSUE SUMMARY -->
     <section class="card" id="issuesSummaryCard" style="display:none;margin-top:12px">
       <div class="card-title">Ultimi problemi</div>
       <div class="row">
@@ -181,7 +181,10 @@
       <div class="card">
         <div class="card-title">Sommario & Azioni</div>
 
-        <div class="row"><div>Versione backend</div><span id="backendVersion" class="badge">—</span></div>
+        <div class="row">
+          <div>Versione backend</div>
+          <span id="backendVersion" class="badge">—</span>
+        </div>
 
         <div class="tests-actions">
           <button class="mini" id="tQuickList">Lista trigger</button>
@@ -193,8 +196,7 @@
 
           <button class="mini" id="tAllIn">Tutti IN</button>
           <button class="mini" id="tAllOut">Tutti OUT</button>
-
-          <button class="mini" id="tVerifyGrace">Verifica grace</button>
+          <button class="mini" id="tVerifyGrace">Verifica Grace</button>
           <button class="mini" id="tSnap">Snapshot</button>
         </div>
 
@@ -206,13 +208,18 @@
 
       <div class="card">
         <div class="card-title">Issue Report</div>
+
         <div class="donut-wrap">
-          <div id="issueDonut" class="donut"><div class="num">0</div><div class="lbl">issues</div></div>
+          <div id="issueDonut" class="donut">
+            <div class="num">0</div>
+            <div class="lbl">issues</div>
+          </div>
           <div>
             <div id="issueSummary" class="tag">—</div>
             <div style="opacity:.7;font-size:.9rem">Ultime ~200 righe del Log</div>
           </div>
         </div>
+
         <ul id="issuesList" class="issues-list"></ul>
       </div>
 
@@ -225,4 +232,130 @@
       <div class="card-title">Impostazioni</div>
 
       <div class="setting-row">
-       
+        <label>Strict LIFE (min)</label>
+        <input id="inpStrict" type="number"/>
+        <button class="mini" id="btnSaveStrict">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Morning HOLD (min)</label>
+        <input id="inpHold" type="number"/>
+        <button class="mini" id="btnSaveHold">Salva</button>
+      </div>
+
+      <hr class="sep"/>
+
+      <div class="setting-row">
+        <label>KA Auto ON</label>
+        <select id="selKaAuto">
+          <option value="true">TRUE</option>
+          <option value="false">FALSE</option>
+        </select>
+        <button class="mini" id="btnSaveKaAuto">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Exit Guard (min)</label>
+        <input id="inpExitGuard" type="number"/>
+        <button class="mini" id="btnSaveExitGuard">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Exit Confirm (min)</label>
+        <input id="inpExitConfirm" type="number"/>
+        <button class="mini" id="btnSaveExitConfirm">Salva</button>
+      </div>
+
+      <hr class="sep"/>
+
+      <div class="setting-row">
+        <label>Log retention (giorni)</label>
+        <input id="inpLogRetention" type="number"/>
+        <button class="mini" id="btnSaveLogRetention">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Pulisci log</label>
+        <button class="mini" id="btnPruneLogs">Pulisci</button>
+      </div>
+
+      <hr class="sep"/>
+
+      <div class="setting-row">
+        <label>LIFE Timeout (min)</label>
+        <input id="inpLifeTimeout" type="number"/>
+        <button class="mini" id="btnSaveLifeTimeout">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Debounce IN (min)</label>
+        <input id="inpDebIn" type="number"/>
+        <button class="mini" id="btnSaveDebIn">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Debounce OUT (min)</label>
+        <input id="inpDebOut" type="number"/>
+        <button class="mini" id="btnSaveDebOut">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Grace diurna (min)</label>
+        <input id="inpEmptyGrace" type="number"/>
+        <button class="mini" id="btnSaveEmptyGrace">Salva</button>
+      </div>
+
+      <div class="setting-row">
+        <label>Piante: intervallo minimo (min)</label>
+        <input id="inpPianteMin" type="number"/>
+        <button class="mini" id="btnSavePianteMin">Salva</button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ENERGY PAGE -->
+  <main id="pageEnergy" class="page">
+    <section class="card">
+      <div class="card-title">Consumi</div>
+
+      <div class="energy2-grid">
+        <div class="energy2-item">
+          <div class="lbl">Attuale</div>
+          <div id="e2Current" class="val">— kWh</div>
+        </div>
+
+        <div class="energy2-item">
+          <div class="lbl">Oggi</div>
+          <div id="e2Today" class="val">—</div>
+        </div>
+
+        <div class="energy2-item">
+          <div class="lbl">Settimana</div>
+          <div id="e2Week" class="val">—</div>
+        </div>
+
+        <div class="energy2-item">
+          <div class="lbl">Dispositivi offline</div>
+          <div id="e2Offline" class="val">—</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- NAVBAR (FOOTER) -->
+  <footer class="navbar">
+    <button class="nav-btn" data-tab="home">Home</button>
+    <button class="nav-btn" data-tab="people">Persone</button>
+    <button class="nav-btn" data-tab="devices">Dispositivi</button>
+    <button class="nav-btn" data-tab="log">Log</button>
+    <button class="nav-btn" data-tab="cruscotto">Cruscotto</button>
+    <button class="nav-btn" data-tab="energy">Energy</button>
+  </footer>
+
+</div>
+
+<script src="app.js?v=oc_v2_3"></script>
+
+</body>
+</html>
