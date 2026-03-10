@@ -1,412 +1,72 @@
-/* app.js — GoAppSync UI (Ottimizzato 2026, compatibile con il tuo HTML/API) */
-"use strict";
+/** api.js — GoAppSync UI wrappers (v2.3.1) */
+window.EXEC_URL = 'https://script.google.com/macros/s/AKfycbwRpy4xgWj7cdcGi_1gI4YjxtoIVVJIzfeKNthKIBgtidFtfNQt-wKUy-SOznFwsPZY/exec';
 
-/* ===================== GLOBALI ===================== */
-let MODEL = null;
-let ACTIVE_TAB = "home";
-let REFRESH_TIMER = null;
-
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => Array.from(document.querySelectorAll(s));
-
-function toast(msg){ try{ console.log(msg); }catch(_){ alert(msg); } }
-if(!window.EXEC_URL){ console.error("EXEC_URL non definito: controlla api.js"); }
-
-/* ===================== FORMATTER ===================== */
-function fmtTs(d){
-  if(!d) return "—";
-  const dt = (d instanceof Date) ? d : new Date(d);
-  if(isNaN(dt)) return "—";
-  return new Intl.DateTimeFormat("it-IT",{dateStyle:"short",timeStyle:"short"}).format(dt);
-}
-function timeOnly(v){
-  if(!v || v==="—") return "—";
-  if(v instanceof Date && !isNaN(v)) return v.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
-  const s=String(v).trim();
-  let m=s.match(/^(\d{1,2}):(\d{2})$/); if(m) return m[1].padStart(2,'0')+":"+m[2];
-  m=s.match(/^(\d{1,2})\.(\d{2})$/);    if(m) return m[1].padStart(2,'0')+":"+m[2];
-  const d=new Date(s); if(!isNaN(d)) return d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
-  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/); if(m) return m[4].padStart(2,'0')+":"+m[5];
-  return "—";
-}
-
-/* ===================== MODEL (JSONP) ===================== */
-function jsonpModel(qs=""){
-  const base=window.EXEC_URL;
-  return new Promise((resolve,reject)=>{
-    try{
-      const cb = "cb_model_"+Math.random().toString(36).slice(2);
-      window[cb] = (data)=>{ try{ delete window[cb]; }catch(_){ } resolve(data); };
-      const s = document.createElement("script");
-      s.src = `${base}${qs}${qs.includes("?")?"&":"?"}callback=${cb}&t=${Date.now()}`;
-      s.onerror = (e)=>{ try{ delete window[cb]; }catch(_){ } reject(e); };
-      document.body.appendChild(s);
-      setTimeout(()=>{ try{s.remove();}catch(_){ } }, 8000);
-    }catch(e){ reject(e); }
-  });
-}
-async function fetchModelOnce(){
-  const m = await jsonpModel();
-  MODEL = (m && typeof m === "object") ? m : null;
-  if(!MODEL) throw new Error("MODEL vuoto");
-  renderHome(MODEL);
-  renderCruscotto(MODEL);
-  renderEnergyPage(MODEL);
-  return true;
-}
-async function loadModelWithRetry(){
-  const delays=[0,2000,5000];
-  for(const d of delays){
-    try{ if(d) await new Promise(r=>setTimeout(r,d)); return await fetchModelOnce(); }
-    catch(e){ if(d===delays[delays.length-1]) console.error("MODEL failed",e); }
-  }
-  return false;
-}
-
-/* ===================== NAVIGAZIONE ===================== */
-function setBadgeState(st){
-  const el=$("#stateBadge"); if(!el) return;
-  el.className="state-badge";
-  if(!st){ el.textContent="—"; return; }
-  const s=String(st).toUpperCase();
-  el.classList.add(s.startsWith("COMFY")?"ok":"alert");
-  el.textContent = s.replace("_"," ");
-}
-function navTo(tab){
-  ACTIVE_TAB = tab;
-  const map={
-    home:"#pageHome", people:"#pagePeople", devices:"#pageDevices",
-    log:"#pageLog", cruscotto:"#pageCruscotto", energy:"#pageEnergy",
-    settings:"#pageSettings", tests:"#pageTests"
-  };
-  $$(".page").forEach(p=>p.classList.remove("page-active"));
-  if(map[tab]) $(map[tab]).classList.add("page-active");
-  /* aggiorna nav attiva (solo bottom-nav: ha data-tab) */
-  $$('.bottom-nav .nav-btn').forEach(b=>b.classList.remove('nav-active'));
-  const nb = document.querySelector(`.bottom-nav .nav-btn[data-tab="${tab}"]`);
-  if(nb) nb.classList.add('nav-active');
-
-  /* on enter */
-  if(tab==="people") loadPeople();
-  if(tab==="devices") loadCams();
-  if(tab==="log") loadErrors();
-  if(tab==="tests") refreshTestsPage(true);
-  if(tab==="cruscotto") renderIssuesMiniInDashboard();
-  if(tab==="energy") renderEnergyPage(MODEL);
-}
-window.navTo = navTo;
-
-/* ===================== HOME/CRUSCOTTO/ENERGY ===================== */
-function renderHome(m){
-  if(!m) return;
-  setBadgeState(m.state);
-  if(m.weather){
-    $("#weatherIcon")?.textContent = m.weather.iconEmoji || "🌤";
-    $("#weatherTemp")?.textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
-    $("#weatherWind")?.textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
-  }
-  const kwh = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
-  $("#energyValue")?.textContent = kwh;
-
-  $("#lblOverride")?.textContent = m.override ? "On" : "Off";
-  $("#lblVacanza")?.textContent  = m.vacanza ? "On" : "Off";
-  $("#btnOverride")?.classList.toggle("on", !!m.override);
-  $("#btnVacanza")?.classList.toggle("on", !!m.vacanza);
-
-  const st = String(m.state||"").toUpperCase();
-  const isUpGuess = (st==="COMFY_DAY");
-  $("#lblAlza")?.textContent = isUpGuess ? "Abbassa" : "Alza";
-
-  const ppl = m.people||[];
-  $("#peopleSummary")?.textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
-}
-function camsText(m){
-  const s=String(m?.state||"").toUpperCase();
-  if(s.startsWith("SECURITY")) return "ON · ON";
-  if(s==="COMFY_NIGHT")        return "OFF · ON";
-  return "OFF · OFF";
-}
-function renderCruscotto(m){
-  const el=$("#cruscottoGrid"); if(!el||!m) return;
-  const tiles=[
-    {key:'state',    title:'Stato',      icon:'🟢', value:(m.state||'—')},
-    {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
-    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'),   value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
-    {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
-    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba)},
-    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto)},
-    {key:'energy',   title:'Energy',     icon:'⚡', value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--')},
-    {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`}
-  ];
-  el.innerHTML = tiles.map(t=>`
-    <div class="cr-tile" data-key="${t.key}">
-      <div class="cr-icon">${t.icon}</div>
-      <div class="cr-title">${t.title}</div>
-      <div class="cr-value">${t.value}</div>
-    </div>`).join("");
-  el.querySelectorAll('.cr-tile[data-key="energy"]').forEach(t=>{
-    t.style.cursor="pointer"; t.addEventListener("click",()=>navTo("energy"));
-  });
-  renderIssuesMiniInDashboard();
-}
-function renderEnergyPage(m){
-  if(!m) return;
-  $("#e2Current")?.textContent = (m.energy?.kwh!=null?`${m.energy.kwh} kWh`:"-- kWh");
-  $("#e2Today") ?.textContent  = (m.energy?.kwh!=null? (m.energy.kwh*0.6).toFixed(1) :"--");
-  $("#e2Week")  ?.textContent  = (m.energy?.kwh!=null? (m.energy.kwh*4).toFixed(1) :"--");
-  $("#e2Offline")?.textContent = (m.devicesOfflineCount!=null?m.devicesOfflineCount:"--");
-}
-
-/* ===================== PEOPLE / CAMS / LOG ===================== */
-async function loadPeople(){
-  try{
-    const r=await jsonpModel("?people=1");
-    const arr=r?.people||[];
-    const ul=$("#peopleList"); if(!ul) return; ul.innerHTML="";
-    for(const p of arr){
-      const ts = p.ts ? fmtTs(p.ts) : (p.tsText||"—");
-      const li=document.createElement("li");
-      li.innerHTML = `
-        <div>${p.name}</div>
-        <div class="sub">${p.lastEvent||"—"} • ${ts}</div>
-        <div><span class="badge ${p.online?'ok':'err'}">${p.online?'Online':'Offline'}</span></div>`;
-      ul.appendChild(li);
-    }
-  }catch(_){}
-}
-async function loadCams(){
-  try{
-    const r=await jsonpModel("?cams=1");
-    const iOn=!!r?.interne, eOn=!!r?.esterne;
-    const ci=$("#camInterne"), ce=$("#camEsterne");
-    if(ci){ ci.textContent=iOn?"ON":"OFF"; ci.className="badge "+(iOn?"ok":"err"); }
-    if(ce){ ce.textContent=eOn?"ON":"OFF"; ce.className="badge "+(eOn?"ok":"err"); }
-  }catch(_){}
-}
-async function loadErrors(){
-  try{
-    const r=await jsonpModel("?logs=1");
-    const ul=$("#logErrors"); if(!ul) return; ul.innerHTML="";
-    const arr=(r?.logs||[])
-      .filter(e => (e.code.includes("ERR") || e.code.includes("ERROR")))
-      .filter(e => !String(e.code).startsWith("ROUTER_")); // purga residui router
-    if(arr.length===0){ const li=document.createElement("li"); li.textContent="Nessun errore"; ul.appendChild(li); return; }
-    arr.forEach(e=>{
-      const li=document.createElement("li");
-      li.innerHTML = `<div>${e.code}</div><div class="sub">${e.desc||""} • ${fmtTs(e.ts)}</div>`;
-      ul.appendChild(li);
+async function apiFetch(event, params = {}) {
+  const usp = new URLSearchParams({ admin:'1', event, ...params });
+  const url = `${window.EXEC_URL}?${usp.toString()}`;
+  try {
+    const res = await fetch(url, { method:'GET', credentials:'omit', cache:'no-store' });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const ct=(res.headers.get('content-type')||'').toLowerCase();
+    const txt=await res.text();
+    if(!ct.includes('application/json')){ try{ return JSON.parse(txt); }catch(_){ throw new Error('Non-JSON'); } }
+    return JSON.parse(txt);
+  } catch (err) {
+    // FALLBACK JSONP
+    const cb=`cb_${event}_${Date.now()}`;
+    return new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src=`${url}&callback=${encodeURIComponent(cb)}`;
+      const timer=setTimeout(()=>{cleanup();reject(new Error('JSONP timeout'));},10000);
+      function cleanup(){ try{delete window[cb];}catch(_){ } if(s.parentNode) s.parentNode.removeChild(s); clearTimeout(timer); }
+      window[cb]=(data)=>{ cleanup(); resolve(data); };
+      s.onerror=()=>{ cleanup(); reject(new Error('JSONP load error')); };
+      document.head.appendChild(s);
     });
-  }catch(_){}
-}
-
-/* ===================== CLASSIFY & ISSUES ===================== */
-function classifyLogCode(code){
-  const c=String(code||"");
-  if(c.startsWith("TEST_PASS")) return "PASS";
-  if(c.startsWith("TEST_SKIP")) return "SKIP";
-  if(c.startsWith("TEST_FAIL")) return "FAIL";
-  if(c.includes("_ERR") || c.startsWith("ERROR_")) return "ERR";
-  if(c.endsWith("_BLOCK") || c.endsWith("_IGNORED")) return "WARN";
-  return "";
-}
-function renderIssuesReport(logs){
-  const issues=[];
-  (logs||[]).forEach((r,idx)=>{
-    const t=classifyLogCode(r.code);
-    if(t==="FAIL"||t==="ERR") issues.push({id:`ISSUE-${(logs.length-idx)}`,code:r.code,desc:r.desc,ts:r.ts});
-  });
-  const donut=$("#issueDonut"); const cnt=issues.length;
-  if(donut){
-    donut.style.setProperty("--pct", cnt>0?"100%":"0%");
-    donut.classList.toggle("bad", cnt>0);
-    const num=donut.querySelector(".num"); if(num) num.textContent=String(cnt);
   }
-  const sum=$("#issueSummary"); if(sum) sum.textContent=(cnt===0?"Nessun problema recente":`${cnt} problemi recenti`);
-  const ul=$("#issuesList"); if(!ul) return; ul.innerHTML="";
-  if(cnt===0){ const li=document.createElement("li"); li.className="issue-row"; li.innerHTML=`<div class="issue-id">Tutto OK</div><span class="badge ok">OK</span>`; ul.appendChild(li); return; }
-  issues.slice(0,12).forEach(it=>{
-    const sev=(it.code.includes("_ERR")||it.code.startsWith("ERROR_"))?"badge err":"badge warn";
-    const li=document.createElement("li"); li.className="issue-row";
-    li.innerHTML = `<div class="issue-id">${it.id}</div>
-      <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
-    ul.appendChild(li);
-  });
-}
-async function renderIssuesMiniInDashboard(){
-  try{
-    const r=await jsonpModel("?logs=1"); const logs=r?.logs||[];
-    const issues=logs.filter(l=>{
-      const t=classifyLogCode(l.code);
-      return (t==="ERR"||t==="FAIL");
-    }).filter(l=>!String(l.code).startsWith("ROUTER_")); // no router
-    const card=$("#issuesSummaryCard"), badge=$("#issuesCountBadge"), ul=$("#issuesMiniList");
-    if(!card||!badge||!ul) return;
-    badge.textContent=String(issues.length);
-    ul.innerHTML="";
-    if(issues.length===0){ card.style.display="none"; return; }
-    card.style.display="";
-    issues.slice(0,5).forEach(it=>{
-      const sev=(it.code.includes("_ERR")?"badge err":"badge warn");
-      const li=document.createElement("li"); li.className="issue-row";
-      li.innerHTML=`<div class="issue-id">${it.code}</div>
-        <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
-      ul.appendChild(li);
-    });
-  }catch(_){}
 }
 
-/* ===================== TESTS PAGE ===================== */
-async function refreshTestsPage(force=false){
-  try{ const v=await api.version(); if(v?.ok) $("#backendVersion")?.textContent = v.version; }catch(_){}
-  try{ const r=await jsonpModel("?logs=1"); renderIssuesReport(r?.logs||[]); }catch(_){}
-}
-window.refreshTestsPage = refreshTestsPage;
+const api = {
+  version: () => apiFetch('version'),
 
-/* ===================== SETTINGS PAGE (completa) ===================== */
-async function loadSettingsPage(){
-  // Carica valori correnti
-  try{
-    const [
-      strict, hold, kaa, exitG, exitC, logDays,
-      lifeTo, debIn, debOut, grace, pMin, flags
-    ] = await Promise.all([
-      api.getStrict(), api.getHold(), api.getKaAuto(),
-      api.getExitGuard(), api.getExitConfirm(), api.getLogRetention(),
-      api.getLifeTimeout(), api.getDebounceIn(), api.getDebounceOut(),
-      api.getEmptyGrace(), api.getPianteMinInt(), apiFetch('get_flags')
-    ]);
+  getStrict: () => apiFetch('get_strict'),
+  setStrict: v => apiFetch('set_strict',{value:v}),
 
-    const setVal=(id,v)=>{ const el=$("#"+id); if(el) el.value=(v!=null?v:""); };
-    setVal("inpStrict",       strict?.strict);
-    setVal("inpHold",         hold?.hold);
-    $("#selKaAuto")?.querySelectorAll("option")?.forEach(o=>{
-      o.selected = (String(o.value).toLowerCase() === String(kaa?.ka_auto).toLowerCase());
-    });
-    setVal("inpExitGuard",    exitG?.exit_guard);
-    setVal("inpExitConfirm",  exitC?.exit_confirm);
-    setVal("inpLogRetention", logDays?.days);
+  getHold: () => apiFetch('get_hold'),
+  setHold: v => apiFetch('set_hold',{value:v}),
 
-    setVal("inpLifeTimeout",  lifeTo?.life_timeout);
-    setVal("inpDebIn",        debIn?.debounce_in);
-    setVal("inpDebOut",       debOut?.debounce_out);
-    setVal("inpEmptyGrace",   grace?.empty_grace);
-    setVal("inpPianteMin",    pMin?.min);
+  getKaAuto: () => apiFetch('get_ka_auto'),
+  setKaAuto: b => apiFetch('set_ka_auto',{value:String(!!b).toUpperCase()}),
 
-    if($("#lblOverrideState")) $("#lblOverrideState").textContent = (flags?.override?'ON':'OFF');
-    if($("#lblVacanzaState"))  $("#lblVacanzaState").textContent  = (flags?.vacanza?'ON':'OFF');
-  }catch(e){ console.error("loadSettingsPage", e); }
+  getExitGuard: () => apiFetch('get_exit_guard'),
+  setExitGuard: v => apiFetch('set_exit_guard',{value:v}),
 
-  // Binding salvataggi (idempotente)
-  const bind=(id,fn)=>{ const b=$("#"+id); if(b && !b._wired){ b._wired=true; b.onclick=fn; } };
+  getExitConfirm: () => apiFetch('get_exit_confirm'),
+  setExitConfirm: v => apiFetch('set_exit_confirm',{value:v}),
 
-  bind("btnSaveStrict",      async()=>{ const v=+$("#inpStrict").value;       const r=await api.setStrict(v);       toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveHold",        async()=>{ const v=+$("#inpHold").value;         const r=await api.setHold(v);         toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveKaAuto",      async()=>{ const v=$("#selKaAuto").value;        const r=await api.setKaAuto(v==='true'); toast(r.ok?'Salvato':'Errore'); });
+  getLogRetention: () => apiFetch('get_log_retention'),
+  setLogRetention: d => apiFetch('set_log_retention',{value:d}),
+  pruneLogs: () => apiFetch('prune_logs'),
 
-  bind("btnSaveExitGuard",   async()=>{ const v=+$("#inpExitGuard").value;    const r=await api.setExitGuard(v);    toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveExitConfirm", async()=>{ const v=+$("#inpExitConfirm").value;  const r=await api.setExitConfirm(v);  toast(r.ok?'Salvato':'Errore'); });
+  getLifeTimeout: () => apiFetch('get_life_timeout'),
+  setLifeTimeout: v => apiFetch('set_life_timeout',{value:v}),
 
-  bind("btnSaveLogRetention",async()=>{ const v=+$("#inpLogRetention").value; const r=await api.setLogRetention(v); toast(r.ok?'Salvato':'Errore'); });
-  bind("btnPruneLogs",       async()=>{ const r=await api.pruneLogs();         toast(r.ok?'Log ripulito':'Errore'); });
+  getDebounceIn : () => apiFetch('get_debounce_in'),
+  setDebounceIn : v => apiFetch('set_debounce_in',{value:v}),
 
-  bind("btnSaveLifeTimeout", async()=>{ const v=+$("#inpLifeTimeout").value;  const r=await api.setLifeTimeout(v);  toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveDebIn",       async()=>{ const v=+$("#inpDebIn").value;        const r=await api.setDebounceIn(v);   toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveDebOut",      async()=>{ const v=+$("#inpDebOut").value;       const r=await api.setDebounceOut(v);  toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveEmptyGrace",  async()=>{ const v=+$("#inpEmptyGrace").value;   const r=await api.setEmptyGrace(v);   toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSavePianteMin",   async()=>{ const v=+$("#inpPianteMin").value;    const r=await api.setPianteMinInt(v); toast(r.ok?'Salvato':'Errore'); });
+  getDebounceOut: () => apiFetch('get_debounce_out'),
+  setDebounceOut: v => apiFetch('set_debounce_out',{value:v}),
 
-  bind("btnToggleOverride",  async()=>{ const f=await apiFetch('get_flags'); const cur=!!(f?.ok&&f.override); const r=await apiFetch('set_override',{value:String(!cur).toUpperCase()}); toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
-  bind("btnToggleVacanza",   async()=>{ const f=await apiFetch('get_flags'); const cur=!!(f?.ok&&f.vacanza);  const r=await apiFetch('set_vacanza',{value:String(!cur).toUpperCase()});  toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
-}
+  getEmptyGrace : () => apiFetch('get_empty_grace'),
+  setEmptyGrace : v => apiFetch('set_empty_grace',{value:v}),
 
-/* ===================== TEST QUICK API ===================== */
-function setStatus(id,text,ok=true){ const el=$("#"+id); if(!el) return; el.textContent=text||""; el.style.color=ok?'#7bd88f':'#ff6b6b'; }
-async function runQuick(op, params={}, btnId=null, statusId='diagStatus'){
-  if(statusId) setStatus(statusId,`Esecuzione: ${op}…`,true);
-  const btn = btnId?$("#"+btnId):null; if(btn) btn.disabled=true;
-  try{
-    const res = await api.quick(op, params);
-    if(res && res.ok){
-      const map={list:'Lista trigger → Log', ka_on:`KA ON ${params?.name||''} (${params?.minutes||''}m)`, ka_off:`KA OFF ${params?.name||''}`, all_out:'Tutti OUT', all_in:'Tutti IN', verify_grace:'Verifica grace', snap:'Snapshot'};
-      if(statusId) setStatus(statusId, (map[op]||'OK')+' ✓', true);
-      if(['all_out','all_in','verify_grace','snap'].includes(op)) try{ window.dispatchEvent(new Event('refreshDashboard')); }catch(_){}
-    }else{
-      if(statusId) setStatus(statusId,'Errore: '+(res?.error||'unknown'),false);
-    }
-  }catch(e){
-    if(statusId) setStatus(statusId,'Errore rete: '+e.message,false);
-  }finally{ if(btn) btn.disabled=false; }
-}
+  getPianteMinInt: () => apiFetch('get_piante_min_interval'),
+  setPianteMinInt: v => apiFetch('set_piante_min_interval',{value:v}),
 
-/* ===================== REFRESH CICLICO ===================== */
-async function refreshNow(){
-  await loadModelWithRetry();
-  if(ACTIVE_TAB==='people') loadPeople();
-  if(ACTIVE_TAB==='devices') loadCams();
-  if(ACTIVE_TAB==='log') loadErrors();
-  if(ACTIVE_TAB==='tests') refreshTestsPage();
-  if(ACTIVE_TAB==='cruscotto') renderIssuesMiniInDashboard();
-  if(ACTIVE_TAB==='energy') renderEnergyPage(MODEL);
-}
+  fullTest: () => apiFetch('diag_full_test'),
+  quick: (op,params={}) => apiFetch('diag_quick',{op,...params}),
 
-/* ===================== WIRING ===================== */
-function wire(){
-  /* Navbar (icone) */
-  $$('.bottom-nav .nav-btn').forEach(b=> b.addEventListener("click", ()=>navTo(b.getAttribute("data-tab"))));
-
-  /* People bar */
-  $("#peopleBar")?.addEventListener("click", ()=>navTo("people"));
-
-  /* Azioni Home */
-  $("#btnOverride")?.addEventListener("click", async()=>{
-    const f1=await apiFetch('get_flags'); const cur=!!(f1?.ok&&f1.override);
-    await apiFetch('set_override',{value:String(!cur).toUpperCase()});
-    toast('Override: '+(!cur?'On':'Off')); refreshNow();
-  });
-  $("#btnVacanza")?.addEventListener("click", async()=>{
-    const f1=await apiFetch('get_flags'); const cur=!!(f1?.ok&&f1.vacanza);
-    await apiFetch('set_vacanza',{value:String(!cur).toUpperCase()});
-    toast('Vacanza: '+(!cur?'On':'Off')); refreshNow();
-  });
-  $("#btnPiante")?.addEventListener("click", async()=>{
-    const r=await apiFetch('piante'); toast(r?.ok?'Piante avviato':'Piante bloccate');
-  });
-  $("#btnAlza")?.addEventListener("click", async()=>{
-    const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
-    if(goDown){ await apiFetch('abbassa_tutto'); $("#lblAlza").textContent='Alza'; }
-    else      { await apiFetch('alza_tutto');    $("#lblAlza").textContent='Abbassa'; }
-  });
-
-  /* Cruscotto toolbar */
-  $("#btnOpenSettings")?.addEventListener("click", ()=>navTo("settings"));
-  $("#btnOpenTests")?.addEventListener("click",     ()=>navTo("tests"));
-
-  /* Test page top */
-  $("#btnBackToCrusc")?.addEventListener("click",   ()=>navTo("cruscotto"));
-  $("#btnRefreshReport")?.addEventListener("click", ()=>refreshTestsPage(true));
-  $("#btnRunFullTestTop")?.addEventListener("click", async()=>{
-    try{ const r=await apiFetch('diag_full_test'); $("#testSuiteStatusTop").textContent = r?.ok?'OK ✓':'Errore'; }
-    catch(e){ $("#testSuiteStatusTop").textContent='Errore rete'; }
-  });
-
-  /* Quick test buttons */
-  const bind=(id,fn)=>{ const el=$("#"+id); if(el) el.onclick=fn; };
-  bind("tQuickList",   ()=>runQuick('list',{},  "tQuickList","diagStatus"));
-  bind("tKaOn",        ()=>runQuick('ka_on',{name:'marco',minutes:5}, "tKaOn","diagStatus"));
-  bind("tKaOff",       ()=>runQuick('ka_off',{name:'marco'}, "tKaOff","diagStatus"));
-  bind("tAllIn",       ()=>runQuick('all_in',{}, "tAllIn","diagStatus"));
-  bind("tAllOut",      ()=>runQuick('all_out',{}, "tAllOut","diagStatus"));
-  bind("tVerifyGrace", ()=>runQuick('verify_grace',{}, "tVerifyGrace","diagStatus"));
-  bind("tSnap",        ()=>runQuick('snap',{}, "tSnap","diagStatus"));
-}
-
-/* ===================== DOM READY ===================== */
-document.addEventListener("DOMContentLoaded", async ()=>{
-  wire();
-  await refreshNow();
-  try{ await refreshTestsPage(true); }catch(_){}
-  REFRESH_TIMER=setInterval(refreshNow, 60000);
-  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refreshNow(); });
-  window.addEventListener("online",refreshNow);
-  window.addEventListener("refreshDashboard",refreshNow);
-});
+  keepaliveStatus: name => apiFetch('keepalive_status',{name}),
+  keepaliveOn: (name,minutes=30) => apiFetch('keepalive_on',{name,minutes}),
+  keepaliveOff: name => apiFetch('keepalive_off',{name})
+};
