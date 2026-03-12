@@ -395,6 +395,55 @@ async function refreshNow(){
   if (ACTIVE_TAB==="energy")    renderEnergyPage(MODEL);
 }
 
+/* ===================== RUN QUICK ===================== */
+async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
+  const map = {
+    list:       "Lista trigger → Log",
+    ka_on:      `KA ON ${params?.name||""} (${params?.minutes||""}m)`,
+    ka_off:     `KA OFF ${params?.name||""}`,
+    all_in:     "Tutti IN",
+    all_out:    "Tutti OUT",
+    verify_grace:"Verifica grace",
+    snap:       "Snapshot"
+  };
+
+  const label = map[op] || op.toUpperCase();
+  const btn   = btnId ? document.getElementById(btnId) : null;
+
+  const setStatus = (text, ok=true) => {
+    const el = document.getElementById(statusId);
+    if (el){
+      el.textContent = text;
+      el.style.color = ok ? "#7bd88f" : "#ff6b6b";
+    }
+    // Mostra anche accanto al bottone "Test Suite" (già presente in HTML)
+    const top = document.getElementById("testSuiteStatusTop");
+    if (top) { top.textContent = (ok ? "OK ✓ " : "ERR × ") + text; top.style.color = ok?"#7bd88f":"#ff6b6b"; }
+  };
+
+  try{
+    if (btn) btn.disabled = true;
+    setStatus(`Esecuzione: ${label}…`, true);
+
+    const res = await api.quick(op, params);
+
+    if (res && res.ok){
+      setStatus(`${label} ✓`, true);
+      toast(`${label}: OK`);
+      // se torna uno snapshot, stampalo in console per debug
+      if (op==="snap" && res.snapshot) console.log("SNAP:", res.snapshot);
+    }else{
+      const msg = res?.error || "unknown";
+      setStatus(`${label} → ERRORE: ${msg}`, false);
+      toast(`${label}: ERRORE`);
+    }
+  }catch(e){
+    setStatus(`${label} → ERRORE RETE: ${e.message}`, false);
+  }finally{
+    if (btn) btn.disabled = false;
+  }
+}
+
 /* ===================== WIRING ===================== */
 function wire(){
   $$(".bottom-nav .nav-btn").forEach(b=>{
