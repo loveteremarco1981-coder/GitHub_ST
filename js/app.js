@@ -451,3 +451,48 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   window.addEventListener("online", refreshNow);
   window.addEventListener("refreshDashboard", refreshNow);
 });
+
+async function runFullTestUI(name='marco'){
+  const card = document.querySelector('#pageTests .tests-grid .card'); // prima card
+  let host = document.getElementById('fullTestSteps');
+  if (!host){
+    host = document.createElement('div');
+    host.id = 'fullTestSteps';
+    host.innerHTML = `
+      <div class="card-title" style="margin-top:10px">Dettaglio Test Suite</div>
+      <ul class="step-list"></ul>`;
+    card?.appendChild(host);
+  }
+  const ul = host.querySelector('.step-list'); if (!ul) return;
+  ul.innerHTML = '<li class="step">Esecuzione…</li>';
+
+  // avvia
+  const res = await apiFetch('diag_full_test', { name });
+
+  // render
+  ul.innerHTML = '';
+  if (!res || !res.steps){
+    const li = document.createElement('li');
+    li.className='step err';
+    li.textContent = 'Errore: risposta backend non valida';
+    ul.appendChild(li);
+    return;
+  }
+
+  res.steps.forEach(s=>{
+    const li = document.createElement('li');
+    li.className = 'step ' + (s.skipped ? 'skip' : (s.ok ? 'ok' : 'err'));
+    li.innerHTML = `
+      <div class="step-title">${s.title}</div>
+      <div class="step-meta">${s.ms} ms</div>
+      <div class="step-msg">${s.msg||''}</div>`;
+    ul.appendChild(li);
+  });
+
+  // badge stato in alto
+  const top = document.getElementById("testSuiteStatusTop");
+  if (top){
+    top.textContent = res.ok ? "OK ✓" : "ERR ×";
+    top.style.color = res.ok ? "#7bd88f" : "#ff6b6b";
+  }
+}
