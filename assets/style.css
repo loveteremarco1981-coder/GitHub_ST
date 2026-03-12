@@ -369,6 +369,19 @@ button.mini:hover{
              font-size:12px; background:#111b2a; border:1px solid #223043; color:#cfe2ff; padding:2px 6px; border-radius:6px; }
 .badge.warn{ border-color:#ffd166; background:rgba(255,209,102,.14); color:#ffe7a6; }
 
-
 /* Utility */
 .is-hidden{ display:none !important; }
+
+
+/* === Test Suite — step list === */
+.step-list{ list-style:none; padding:0; margin:8px 0 0; display:flex; flex-direction:column; gap:8px; }
+.step{
+  display:grid; grid-template-columns: 1fr auto; gap:6px; align-items:center;
+  padding:10px 12px; background:#0f141d; border:1px solid #223043; border-radius:10px;
+}
+.step-title{ font-weight:700; color:#e7eef7; }
+.step-meta{ font-size:12px; opacity:.7; }
+.step-msg{ grid-column:1 / span 2; font-size:12px; color:#cfe2ff; opacity:.9; }
+.step.ok  { border-color:#25c376; box-shadow:0 0 0 1px rgba(37,195,118,.15) inset; }
+.step.err { border-color:#ff5d5d; box-shadow:0 0 0 1px rgba(255,93,93,.12) inset; }
+.step.skip{ border-style:dashed; opacity:.85; }
