@@ -20,16 +20,15 @@ function fmtTs(d){
   if (isNaN(dt)) return "—";
   return new Intl.DateTimeFormat("it-IT",{dateStyle:"short",timeStyle:"short"}).format(dt);
 }
-
 function timeOnly(v){
   if (!v || v==="—") return "—";
   if (v instanceof Date && !isNaN(v)) {
     return v.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
   }
   const s = String(v).trim();
-  let m = s.match(/^(\d{1,2}):(\d{2})$/); if (m) return m[1].padStart(2,"0")+":"+m[2];
-      m = s.match(/^(\d{1,2})\.(\d{2})$/); if (m) return m[1].padStart(2,"0")+":"+m[2];
-  const d = new Date(s); if (!isNaN(d)) return d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+  let m = s.match(/^(\d{1,2}):(\d{2})$/);        if (m) return m[1].padStart(2,"0")+":"+m[2];
+      m = s.match(/^(\d{1,2})\.(\d{2})$/);       if (m) return m[1].padStart(2,"0")+":"+m[2];
+  const d = new Date(s);                         if (!isNaN(d)) return d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
       m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/);
   if (m) return m[4].padStart(2,"0")+":"+m[5];
   return "—";
@@ -41,32 +40,26 @@ function jsonpModel(qs=""){
   return new Promise((resolve,reject)=>{
     try{
       const cb = "cb_model_"+Math.random().toString(36).slice(2);
-      window[cb] = (data)=>{ delete window[cb]; resolve(data); };
-
+      const cleanup = ()=>{ try{ delete window[cb]; }catch(_){ } };
+      window[cb] = (data)=>{ cleanup(); resolve(data); };
       const s = document.createElement("script");
       s.src = `${base}${qs}${qs.includes("?")?"&":"?"}callback=${cb}&t=${Date.now()}`;
-      s.onerror = (e)=>{ delete window[cb]; reject(e); };
-
+      s.onerror = (e)=>{ cleanup(); reject(e); };
       document.body.appendChild(s);
       setTimeout(()=>{ try{s.remove();}catch(_){ } }, 8000);
     }catch(e){ reject(e); }
   });
 }
-
 async function fetchModelOnce(){
   const m = await jsonpModel();
   MODEL = (m && typeof m==="object") ? m : null;
   window.__lastModel__ = MODEL;
-
   if (!MODEL) throw new Error("MODEL vuoto");
-
   renderHome(MODEL);
   renderCruscotto(MODEL);
   renderEnergyPage(MODEL);
-
   return true;
 }
-
 async function loadModelWithRetry(){
   const delays = [0, 2000, 5000];
   for (const d of delays){
@@ -87,21 +80,13 @@ function setBadgeState(st){
   el.classList.add(s.startsWith("COMFY") ? "ok" : "alert");
   el.textContent = s.replace("_"," ");
 }
-
 function navTo(tab){
   ACTIVE_TAB = tab;
-
   const map = {
-    home:"#pageHome",
-    people:"#pagePeople",
-    devices:"#pageDevices",
-    log:"#pageLog",
-    cruscotto:"#pageCruscotto",
-    energy:"#pageEnergy",
-    settings:"#pageSettings",
-    tests:"#pageTests"
+    home:"#pageHome", people:"#pagePeople", devices:"#pageDevices",
+    log:"#pageLog", cruscotto:"#pageCruscotto", energy:"#pageEnergy",
+    settings:"#pageSettings", tests:"#pageTests"
   };
-
   $$(".page").forEach(p=>p.classList.remove("page-active"));
   if (map[tab]) $(map[tab]).classList.add("page-active");
 
@@ -109,33 +94,34 @@ function navTo(tab){
   const nb = document.querySelector(`.bottom-nav .nav-btn[data-tab="${tab}"]`);
   if (nb) nb.classList.add("nav-active");
 
-  if (tab==="people") loadPeople();
-  if (tab==="devices") loadCams();
-  if (tab==="log") loadErrors();
-  if (tab==="tests") refreshTestsPage(true);
+  if (tab==="people")    loadPeople();
+  if (tab==="devices")   loadCams();
+  if (tab==="log")       loadErrors();
+  if (tab==="tests")     refreshTestsPage(true);
   if (tab==="cruscotto") renderIssuesMiniInDashboard();
-  if (tab==="energy") renderEnergyPage(MODEL);
+  if (tab==="energy")    renderEnergyPage(MODEL);
 }
-
 window.navTo = navTo;
 
-/* ===================== HOME ===================== */
+/* ===================== HOME/CRUSCOTTO/ENERGY ===================== */
 function renderHome(m){
   if (!m) return;
-
   setBadgeState(m.state);
 
-  if (m.weather){
+  const wp = $("#weatherPill");
+  if (!m.weather || (m.weather.tempC==null && m.weather.windKmh==null)){
+    wp?.classList?.add("is-hidden");
+  }else{
+    wp?.classList?.remove("is-hidden");
     $("#weatherIcon").textContent = m.weather.iconEmoji || "🌤";
-    $("#weatherTemp").textContent = m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°";
-    $("#weatherWind").textContent = m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h";
+    $("#weatherTemp").textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
+    $("#weatherWind").textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
   }
 
   $("#energyValue").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
 
   $("#lblOverride").textContent = m.override ? "On" : "Off";
   $("#lblVacanza").textContent  = m.vacanza ? "On" : "Off";
-
   $("#btnOverride").classList.toggle("on", !!m.override);
   $("#btnVacanza").classList.toggle("on", !!m.vacanza);
 
@@ -145,15 +131,53 @@ function renderHome(m){
   const ppl = m.people || [];
   $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
 }
+function camsText(m){
+  const s = String(m?.state||"").toUpperCase();
+  if (s.startsWith("SECURITY")) return "ON · ON";
+  if (s==="COMFY_NIGHT")       return "OFF · ON";
+  return "OFF · OFF";
+}
+function renderCruscotto(m){
+  const el = $("#cruscottoGrid"); if (!el || !m) return;
+  const tiles = [
+    {key:'state',    title:'Stato',      icon:'🟢', value:(m.state||'—')},
+    {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
+    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'), value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
+    {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
+    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba)},
+    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto)},
+    {key:'energy',   title:'Energy',     icon:'⚡',  value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--')},
+    {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`}
+  ];
+  el.innerHTML = tiles.map(t=>`
+    <div class="cr-tile" data-key="${t.key}">
+      <div class="cr-icon">${t.icon}</div>
+      <div class="cr-title">${t.title}</div>
+      <div class="cr-value">${t.value}</div>
+    </div>`).join("");
 
-/* ===================== CAMS ===================== */
+  el.querySelectorAll('.cr-tile[data-key="energy"]').forEach(t=>{
+    t.style.cursor = "pointer";
+    t.addEventListener("click", ()=>navTo("energy"));
+  });
+
+  renderIssuesMiniInDashboard();
+}
+function renderEnergyPage(m){
+  if (!m) return;
+  $("#e2Current") && ($("#e2Current").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "-- kWh"));
+  $("#e2Today")  && ($("#e2Today").textContent   = (m.energy?.kwh!=null ? (m.energy.kwh*0.6).toFixed(1) : "--"));
+  $("#e2Week")   && ($("#e2Week").textContent    = (m.energy?.kwh!=null ? (m.energy.kwh*4).toFixed(1) : "--"));
+  $("#e2Offline")&& ($("#e2Offline").textContent = (m.devicesOfflineCount!=null ? m.devicesOfflineCount : "--"));
+}
+
+/* ===================== PEOPLE / CAMS / LOG ===================== */
 async function loadPeople(){
   try{
     const r = await jsonpModel("?people=1");
     const arr = r?.people || [];
     const ul = $("#peopleList"); if (!ul) return;
     ul.innerHTML = "";
-
     for (const p of arr){
       const ts = p.ts ? fmtTs(p.ts) : (p.tsText || "—");
       const li = document.createElement("li");
@@ -165,7 +189,6 @@ async function loadPeople(){
     }
   }catch(_){}
 }
-
 async function loadCams(){
   try{
     const r = await jsonpModel("?cams=1");
@@ -177,21 +200,20 @@ async function loadCams(){
     if (ce){ ce.textContent = eOn ? "ON" : "OFF"; ce.className = "badge "+(eOn?"ok":"err"); }
   }catch(_){}
 }
-
 async function loadErrors(){
   try{
     const r = await jsonpModel("?logs=1");
     const ul = $("#logErrors"); if (!ul) return;
     ul.innerHTML = "";
 
-    const arr = (r?.logs || [])
-      .filter(e => (e.code.includes("ERR") || e.code.includes("ERROR")))
-      .filter(e => !String(e.code).startsWith("ROUTER_"));
+    // newest first + solo errori
+    let arr = (r?.logs || []).slice().sort((a,b)=> new Date(b.ts||0) - new Date(a.ts||0));
+    arr = arr.filter(e => (String(e.code||'').includes("ERR") || String(e.code||'').includes("ERROR")));
 
     if (arr.length===0){
-      const li = document.createElement("li"); li.textContent = "Nessun errore"; ul.appendChild(li); return;
+      const li = document.createElement("li"); li.textContent = "Nessun errore";
+      ul.appendChild(li); return;
     }
-
     arr.forEach(e=>{
       const li = document.createElement("li");
       li.innerHTML = `<div>${e.code}</div><div class="sub">${e.desc||""} • ${fmtTs(e.ts)}</div>`;
@@ -210,8 +232,6 @@ function classifyLogCode(code){
   if (c.endsWith("_BLOCK") || c.endsWith("_IGNORED")) return "WARN";
   return "";
 }
-
-
 function renderIssuesReport(logs){
   const issues = [];
   (logs || []).forEach((r,idx)=>{
@@ -263,8 +283,6 @@ function renderIssuesReport(logs){
     ul.appendChild(li);
   });
 }
-
-
 async function renderIssuesMiniInDashboard(){
   try{
     const r    = await jsonpModel("?logs=1");
@@ -306,96 +324,7 @@ async function refreshTestsPage(force=false){
   }catch(_){}
 }
 
-window.refreshTestsPage = refreshTestsPage;
-
-/* ===================== SETTINGS PAGE ===================== */
-async function loadSettingsPage(){
-  try{
-    const [
-      strict, hold, kaa, exitG, exitC, logDays,
-      lifeTo, debIn, debOut, grace, pMin, flags
-    ] = await Promise.all([
-      api.getStrict(), api.getHold(), api.getKaAuto(),
-      api.getExitGuard(), api.getExitConfirm(), api.getLogRetention(),
-      api.getLifeTimeout(), api.getDebounceIn(), api.getDebounceOut(),
-      api.getEmptyGrace(), api.getPianteMinInt(), apiFetch('get_flags')
-    ]);
-
-    const setVal = (id,v)=>{ 
-      const el=$("#"+id); 
-      if(el) el.value = (v!=null ? v : ""); 
-    };
-
-    setVal("inpStrict", strict?.strict);
-    setVal("inpHold",   hold?.hold);
-
-    $("#selKaAuto").value = String(kaa?.ka_auto).toUpperCase() === "TRUE" ? "true" : "false";
-
-    setVal("inpExitGuard",   exitG?.exit_guard);
-    setVal("inpExitConfirm", exitC?.exit_confirm);
-    setVal("inpLogRetention", logDays?.days);
-
-    setVal("inpLifeTimeout", lifeTo?.life_timeout);
-    setVal("inpDebIn",       debIn?.debounce_in);
-    setVal("inpDebOut",      debOut?.debounce_out);
-    setVal("inpEmptyGrace",  grace?.empty_grace);
-    setVal("inpPianteMin",   pMin?.min);
-
-    $("#lblOverrideState").textContent = flags?.override ? "ON" : "OFF";
-    $("#lblVacanzaState").textContent  = flags?.vacanza  ? "ON" : "OFF";
-
-  }catch(e){
-    console.error("loadSettingsPage error:", e);
-  }
-
-  // Binding
-  const bind = (id,fn)=>{ const b=$("#"+id); if(b && !b._wired){ b._wired=true; b.onclick=fn; } };
-
-  bind("btnSaveStrict",      async()=>{ const v=+$("#inpStrict").value;       const r=await api.setStrict(v);        toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveHold",        async()=>{ const v=+$("#inpHold").value;         const r=await api.setHold(v);          toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveKaAuto",      async()=>{ const v=$("#selKaAuto").value;        const r=await api.setKaAuto(v==='true'); toast(r.ok?'Salvato':'Errore'); });
-
-  bind("btnSaveExitGuard",   async()=>{ const v=+$("#inpExitGuard").value;    const r=await api.setExitGuard(v);     toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveExitConfirm", async()=>{ const v=+$("#inpExitConfirm").value;  const r=await api.setExitConfirm(v);   toast(r.ok?'Salvato':'Errore'); });
-
-  bind("btnSaveLogRetention",async()=>{ const v=+$("#inpLogRetention").value; const r=await api.setLogRetention(v);  toast(r.ok?'Salvato':'Errore'); });
-  bind("btnPruneLogs",       async()=>{ const r=await api.pruneLogs();         toast(r.ok?'Log ripulito':'Errore'); });
-
-  bind("btnSaveLifeTimeout", async()=>{ const v=+$("#inpLifeTimeout").value;  const r=await api.setLifeTimeout(v);   toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveDebIn",       async()=>{ const v=+$("#inpDebIn").value;        const r=await api.setDebounceIn(v);    toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveDebOut",      async()=>{ const v=+$("#inpDebOut").value;       const r=await api.setDebounceOut(v);   toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSaveEmptyGrace",  async()=>{ const v=+$("#inpEmptyGrace").value;   const r=await api.setEmptyGrace(v);    toast(r.ok?'Salvato':'Errore'); });
-  bind("btnSavePianteMin",   async()=>{ const v=+$("#inpPianteMin").value;    const r=await api.setPianteMinInt(v);  toast(r.ok?'Salvato':'Errore'); });
-
-  bind("btnToggleOverride",  async()=>{ 
-    const f=await apiFetch("get_flags"); 
-    const cur=!!(f?.ok && f.override); 
-    const r=await apiFetch("set_override",{value:String(!cur).toUpperCase()}); 
-    toast(r.ok?'OK':'Errore'); 
-    loadSettingsPage(); 
-  });
-
-  bind("btnToggleVacanza",   async()=>{ 
-    const f=await apiFetch("get_flags"); 
-    const cur=!!(f?.ok && f.vacanza);  
-    const r=await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});  
-    toast(r.ok?'OK':'Errore'); 
-    loadSettingsPage(); 
-  });
-}
-
-/* ===================== REFRESH CICLICO ===================== */
-async function refreshNow(){
-  await loadModelWithRetry();
-  if (ACTIVE_TAB==="people")    loadPeople();
-  if (ACTIVE_TAB==="devices")   loadCams();
-  if (ACTIVE_TAB==="log")       loadErrors();
-  if (ACTIVE_TAB==="tests")     refreshTestsPage();
-  if (ACTIVE_TAB==="cruscotto") renderIssuesMiniInDashboard();
-  if (ACTIVE_TAB==="energy")    renderEnergyPage(MODEL);
-}
-
-/* ===================== RUN QUICK ===================== */
+/* ===== runQuick (feedback visibile) ===== */
 async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
   const map = {
     list:       "Lista trigger → Log",
@@ -406,31 +335,24 @@ async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
     verify_grace:"Verifica grace",
     snap:       "Snapshot"
   };
-
   const label = map[op] || op.toUpperCase();
   const btn   = btnId ? document.getElementById(btnId) : null;
 
   const setStatus = (text, ok=true) => {
     const el = document.getElementById(statusId);
-    if (el){
-      el.textContent = text;
-      el.style.color = ok ? "#7bd88f" : "#ff6b6b";
-    }
-    // Mostra anche accanto al bottone "Test Suite" (già presente in HTML)
+    if (el){ el.textContent = text; el.style.color = ok ? "#7bd88f" : "#ff6b6b"; }
     const top = document.getElementById("testSuiteStatusTop");
-    if (top) { top.textContent = (ok ? "OK ✓ " : "ERR × ") + text; top.style.color = ok?"#7bd88f":"#ff6b6b"; }
+    if (top){ top.textContent = (ok ? "OK ✓ " : "ERR × ") + text; top.style.color = ok?"#7bd88f":"#ff6b6b"; }
   };
 
   try{
     if (btn) btn.disabled = true;
     setStatus(`Esecuzione: ${label}…`, true);
-
     const res = await api.quick(op, params);
 
     if (res && res.ok){
       setStatus(`${label} ✓`, true);
       toast(`${label}: OK`);
-      // se torna uno snapshot, stampalo in console per debug
       if (op==="snap" && res.snapshot) console.log("SNAP:", res.snapshot);
     }else{
       const msg = res?.error || "unknown";
@@ -443,6 +365,18 @@ async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
     if (btn) btn.disabled = false;
   }
 }
+window.refreshTestsPage = refreshTestsPage;
+
+/* ===================== REFRESH CICLICO ===================== */
+async function refreshNow(){
+  await loadModelWithRetry();
+  if (ACTIVE_TAB==="people")    loadPeople();
+  if (ACTIVE_TAB==="devices")   loadCams();
+  if (ACTIVE_TAB==="log")       loadErrors();
+  if (ACTIVE_TAB==="tests")     refreshTestsPage();
+  if (ACTIVE_TAB==="cruscotto") renderIssuesMiniInDashboard();
+  if (ACTIVE_TAB==="energy")    renderEnergyPage(MODEL);
+}
 
 /* ===================== WIRING ===================== */
 function wire(){
@@ -453,30 +387,35 @@ function wire(){
   $("#peopleBar")?.addEventListener("click", ()=>navTo("people"));
 
   $("#btnOverride")?.addEventListener("click", async()=>{
-    const f1=await apiFetch("get_flags"); 
-    const cur=!!(f1?.ok && f1.override);
+    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.override);
     await apiFetch("set_override",{value:String(!cur).toUpperCase()});
-    toast("Override: "+(!cur?"On":"Off")); 
-    refreshNow();
+    toast("Override: "+(!cur?"On":"Off")); refreshNow();
   });
 
   $("#btnVacanza")?.addEventListener("click", async()=>{
-    const f1=await apiFetch("get_flags"); 
-    const cur=!!(f1?.ok && f1.vacanza);
+    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.vacanza);
     await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});
-    toast("Vacanza: "+(!cur?"On":"Off")); 
-    refreshNow();
+    toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
   });
 
+  // Piante (feedback)
   $("#btnPiante")?.addEventListener("click", async()=>{
-    const r=await apiFetch("piante"); 
-    toast(r?.ok?"Piante avviato":"Piante bloccate");
+    const r=await apiFetch("piante");
+    toast(r?.ok ? "Irrigazione: AVVIATA" : ("Irrigazione: ERRORE → "+(r?.error||"")));
   });
 
+  // Tapparelle (feedback + toggle label)
   $("#btnAlza")?.addEventListener("click", async()=>{
     const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
-    if (goDown){ await apiFetch("abbassa_tutto"); $("#lblAlza").textContent="Alza"; }
-    else       { await apiFetch("alza_tutto");    $("#lblAlza").textContent="Abbassa"; }
+    if (goDown){
+      const res = await apiFetch("abbassa_tutto");
+      toast(res?.ok ? "Tapparelle: GIÙ" : ("Tapparelle: ERRORE → "+(res?.error||"")));
+      if (res?.ok) $("#lblAlza").textContent="Alza";
+    }else{
+      const res = await apiFetch("alza_tutto");
+      toast(res?.ok ? "Tapparelle: SU" : ("Tapparelle: ERRORE → "+(res?.error||"")));
+      if (res?.ok) $("#lblAlza").textContent="Abbassa";
+    }
   });
 
   $("#btnOpenSettings")?.addEventListener("click", ()=>navTo("settings"));
@@ -486,16 +425,14 @@ function wire(){
   $("#btnRefreshReport")?.addEventListener("click", ()=>refreshTestsPage(true));
 
   $("#btnRunFullTestTop")?.addEventListener("click", async()=>{
-    try{
-      const r=await apiFetch("diag_full_test");
-      $("#testSuiteStatusTop").textContent = r?.ok?"OK ✓":"Errore";
-    }catch(e){
-      $("#testSuiteStatusTop").textContent='Errore rete';
-    }
+    try{ const r = await apiFetch("diag_full_test");
+         const el= $("#testSuiteStatusTop"); if (el) el.textContent = (r?.ok?"OK ✓":"Errore"); }
+    catch(e){ const el= $("#testSuiteStatusTop"); if (el) el.textContent = "Errore rete"; }
   });
 
+  // Quick test buttons
   const bind=(id,fn)=>{ const el=$("#"+id); if(el) el.onclick=fn; };
-  bind("tQuickList",   ()=>runQuick("list",{}, "tQuickList","diagStatus"));
+  bind("tQuickList",   ()=>runQuick("list",{},  "tQuickList","diagStatus"));
   bind("tKaOn",        ()=>runQuick("ka_on",{name:"marco",minutes:5}, "tKaOn","diagStatus"));
   bind("tKaOff",       ()=>runQuick("ka_off",{name:"marco"}, "tKaOff","diagStatus"));
   bind("tAllIn",       ()=>runQuick("all_in",{}, "tAllIn","diagStatus"));
