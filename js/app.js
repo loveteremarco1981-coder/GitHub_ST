@@ -343,29 +343,37 @@ async function loadSettingsPage(){
       api.getStrict(), api.getHold(), api.getKaAuto(),
       api.getExitGuard(), api.getExitConfirm(), api.getLogRetention(),
       api.getLifeTimeout(), api.getDebounceIn(), api.getDebounceOut(),
-      api.getEmptyGrace(), api.getPianteMinInt(), apiFetch("get_flags")
+      api.getEmptyGrace(), api.getPianteMinInt(), apiFetch('get_flags')
     ]);
 
-    const setVal = (id,v)=>{ const el=$("#"+id); if (el) el.value = (v!=null ? v : ""); };
-    setVal("inpStrict",       strict?.strict);
-    setVal("inpHold",         hold?.hold);
-    $("#selKaAuto")?.querySelectorAll("option")?.forEach(o=>{
-      o.selected = (String(o.value).toLowerCase() === String(kaa?.ka_auto).toLowerCase());
-    });
-    setVal("inpExitGuard",    exitG?.exit_guard);
-    setVal("inpExitConfirm",  exitC?.exit_confirm);
-    setVal("inpLogRetention", logDays?.days);
-    setVal("inpLifeTimeout",  lifeTo?.life_timeout);
-    setVal("inpDebIn",        debIn?.debounce_in);
-    setVal("inpDebOut",       debOut?.debounce_out);
-    setVal("inpEmptyGrace",   grace?.empty_grace);
-    setVal("inpPianteMin",    pMin?.min);
+    const setVal=(id,v)=>{ 
+      const el=$("#"+id); 
+      if(el) el.value = (v!=null ? v : ""); 
+    };
 
-    if ($("#lblOverrideState")) $("#lblOverrideState").textContent = (flags?.override ? "ON" : "OFF");
-    if ($("#lblVacanzaState"))  $("#lblVacanzaState").textContent  = (flags?.vacanza  ? "ON" : "OFF");
+    setVal("inpStrict", strict?.strict);
+    setVal("inpHold",   hold?.hold);
+
+    $("#selKaAuto")?.value = String(kaa?.ka_auto).toUpperCase() === "TRUE" ? "true" : "false";
+
+    setVal("inpExitGuard",   exitG?.exit_guard);
+    setVal("inpExitConfirm", exitC?.exit_confirm);
+    setVal("inpLogRetention", logDays?.days);
+
+    setVal("inpLifeTimeout", lifeTo?.life_timeout);
+    setVal("inpDebIn",       debIn?.debounce_in);
+    setVal("inpDebOut",      debOut?.debounce_out);
+    setVal("inpEmptyGrace",  grace?.empty_grace);
+    setVal("inpPianteMin",   pMin?.min);
+
+    $("#lblOverrideState")?.textContent = flags?.override ? "ON" : "OFF";
+    $("#lblVacanzaState") ?.textContent = flags?.vacanza  ? "ON" : "OFF";
+
   }catch(e){
-    console.error("loadSettingsPage", e);
+    console.error("loadSettingsPage error:", e);
   }
+}
+
 
   // Binding idempotente
   const bind = (id,fn)=>{ const b=$("#"+id); if(b && !b._wired){ b._wired=true; b.onclick=fn; } };
