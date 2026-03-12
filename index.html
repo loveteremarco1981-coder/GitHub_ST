@@ -10,14 +10,14 @@
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <link rel="stylesheet" href="assets/style.css?v=oc_v2_3"/>
+  <link rel="stylesheet" href="assets/style.css?v=oc_v2_4"/>
 </head>
 
 <body>
 
 <div id="app">
 
-  <!-- TOPBAR -->
+  <!-- ====================== TOPBAR ======================= -->
   <header class="topbar">
     <div class="title-area">
       <h1 class="app-title">Home</h1>
@@ -32,14 +32,17 @@
     </div>
   </header>
 
-  <!-- PEOPLE BAR -->
+
+  <!-- ====================== PEOPLE BAR ======================= -->
   <div id="peopleBar" class="people-bar" role="button" tabindex="0" aria-label="Apri Persone">
     <span>Persone</span>
     <span id="peopleSummary" class="people-summary">—</span>
   </div>
 
+
   <!-- ====================== HOME ======================= -->
-  <main id="pageHome" class="page page-active" aria-labelledby="home-title">
+  <main id="pageHome" class="page page-active">
+
     <section class="card energy-card">
       <div class="card-title">Energy</div>
       <div class="energy-value" id="energyValue">— kWh</div>
@@ -74,10 +77,13 @@
 
       </div>
     </section>
+
   </main>
+
 
   <!-- ====================== PERSONE ======================= -->
   <main id="pagePeople" class="page">
+
     <div class="people-toolbar">
       <button type="button" id="btnStrictLife" class="nav-btn small">⚙️ Strict LIFE</button>
       <button type="button" id="btnMorningHold" class="nav-btn small">⏰ Morning HOLD</button>
@@ -87,7 +93,9 @@
       <div class="card-title">Persone</div>
       <ul id="peopleList" class="list" aria-live="polite"></ul>
     </section>
+
   </main>
+
 
   <!-- ====================== DEVICES ======================= -->
   <main id="pageDevices" class="page">
@@ -100,6 +108,7 @@
     </section>
   </main>
 
+
   <!-- ====================== LOG ======================= -->
   <main id="pageLog" class="page">
     <section class="card">
@@ -108,33 +117,38 @@
     </section>
   </main>
 
+
   <!-- ====================== CRUSCOTTO ======================= -->
   <main id="pageCruscotto" class="page">
+
     <section class="cruscotto-grid" id="cruscottoGrid"></section>
 
     <div class="cruscotto-toolbar">
-      <button type="button" id="btnOpenSettings" class="nav-btn small">⚙️ Impostazioni</button>
-      <button type="button" id="btnOpenTests" class="nav-btn small">🧪 Test</button>
+      <button type="button" id="btnOpenSettings" class="nav-btn small">Impostazioni</button>
+      <button type="button" id="btnOpenTests" class="nav-btn small">Test</button>
     </div>
 
-    <!-- ISSUE SUMMARY -->
+    <!-- MINI ISSUE SUMMARY -->
     <section class="card" id="issuesSummaryCard" style="display:none;margin-top:12px">
       <div class="card-title">Ultimi problemi</div>
       <div class="row">
-        <div>Rilevazioni recenti</div>
+        <div>Recenti</div>
         <span id="issuesCountBadge" class="badge">0</span>
       </div>
       <ul id="issuesMiniList" class="issues-list"></ul>
     </section>
+
   </main>
+
 
   <!-- ====================== TESTS ======================= -->
   <main id="pageTests" class="page">
+
     <section class="tests-toolbar">
-      <button id="btnBackToCrusc" class="nav-btn small">⬅️ Torna al Cruscotto</button>
-      <button id="btnRunFullTestTop" class="nav-btn small">🧪 Test Suite</button>
+      <button id="btnBackToCrusc" class="nav-btn small">Torna al Cruscotto</button>
+      <button id="btnRunFullTestTop" class="nav-btn small">Test Suite</button>
       <span id="testSuiteStatusTop" class="tag"></span>
-      <button id="btnRefreshReport" class="nav-btn small" style="margin-left:auto">⟳ Aggiorna report</button>
+      <button id="btnRefreshReport" class="nav-btn small" style="margin-left:auto">Aggiorna</button>
     </section>
 
     <section class="tests-grid">
@@ -183,110 +197,184 @@
       </div>
 
     </section>
+
   </main>
 
-  <!-- ====================== SETTINGS ======================= -->
+
+  <!-- ====================== NUOVA PAGINA IMPOSTAZIONI ======================= -->
   <main id="pageSettings" class="page">
 
-    <section class="card">
-      <div class="card-title">Impostazioni</div>
+  <section class="card">
+    <div class="card-title">Impostazioni</div>
 
-      <div class="setting-row">
-        <label>Strict LIFE (min)</label>
-        <input id="inpStrict" type="number"/>
-        <button class="mini" id="btnSaveStrict">Salva</button>
-      </div>
+    <!-- Gruppo: Presenza -->
+    <h3 class="set-group">Presenza & Routine</h3>
 
-      <div class="setting-row">
-        <label>Morning HOLD dopo alba (min)</label>
-        <input id="inpHold" type="number"/>
-        <button class="mini" id="btnSaveHold">Salva</button>
-      </div>
+    <div class="setting-row">
+      <label>Strict LIFE (min)</label>
+      <select id="inpStrict">
+        <option value="0">0</option>
+        <option value="15">15</option>
+        <option value="30">30</option>
+        <option value="60">60</option>
+        <option value="120">120</option>
+      </select>
+      <button class="mini" id="btnSaveStrict">Salva</button>
+    </div>
 
-      <hr class="sep"/>
+    <div class="setting-row">
+      <label>Morning HOLD dopo alba</label>
+      <select id="inpHold">
+        <option value="0">0</option>
+        <option value="30">30</option>
+        <option value="60">60</option>
+        <option value="120">120</option>
+      </select>
+      <button class="mini" id="btnSaveHold">Salva</button>
+    </div>
 
-      <div class="setting-row">
-        <label>KA Auto‑ON</label>
-        <select id="selKaAuto">
-          <option value="true">TRUE</option>
-          <option value="false">FALSE</option>
-        </select>
-        <button class="mini" id="btnSaveKaAuto">Salva</button>
-      </div>
+    <div class="setting-row">
+      <label>KA Auto‑ON</label>
+      <select id="selKaAuto">
+        <option value="true">TRUE</option>
+        <option value="false">FALSE</option>
+      </select>
+      <button class="mini" id="btnSaveKaAuto">Salva</button>
+    </div>
 
-      <div class="setting-row">
-        <label>Exit Guard (min)</label>
-        <input id="inpExitGuard" type="number"/>
-        <button class="mini" id="btnSaveExitGuard">Salva</button>
-      </div>
+    <hr class="sep"/>
 
-      <div class="setting-row">
-        <label>Exit Confirm (min)</label>
-        <input id="inpExitConfirm" type="number"/>
-        <button class="mini" id="btnSaveExitConfirm">Salva</button>
-      </div>
+    <!-- Gruppo: Uscita -->
+    <h3 class="set-group">Uscita & Sicurezza</h3>
 
-      <hr class="sep"/>
+    <div class="setting-row">
+      <label>Exit Guard (min)</label>
+      <select id="inpExitGuard">
+        <option value="0">0</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+        <option value="10">10</option>
+      </select>
+      <button class="mini" id="btnSaveExitGuard">Salva</button>
+    </div>
 
-      <div class="setting-row">
-        <label>Log retention (giorni)</label>
-        <input id="inpLogRetention" type="number"/>
-        <button class="mini" id="btnSaveLogRetention">Salva</button>
-      </div>
+    <div class="setting-row">
+      <label>Exit Confirm (min)</label>
+      <select id="inpExitConfirm">
+        <option value="0">0</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+      </select>
+      <button class="mini" id="btnSaveExitConfirm">Salva</button>
+    </div>
 
-      <div class="setting-row">
-        <label>Pulisci log</label>
-        <button class="mini" id="btnPruneLogs">Pulisci</button>
-      </div>
+    <hr class="sep"/>
 
-      <hr class="sep"/>
+    <!-- Gruppo: Log -->
+    <h3 class="set-group">Log & Sistema</h3>
 
-      <div class="setting-row">
-        <label>LIFE Timeout (min)</label>
-        <input id="inpLifeTimeout" type="number"/>
-        <button class="mini" id="btnSaveLifeTimeout">Salva</button>
-      </div>
+    <div class="setting-row">
+      <label>Log retention (giorni)</label>
+      <select id="inpLogRetention">
+        <option value="3">3</option>
+        <option value="7">7</option>
+        <option value="15">15</option>
+        <option value="30">30</option>
+      </select>
+      <button class="mini" id="btnSaveLogRetention">Salva</button>
+    </div>
 
-      <div class="setting-row">
-        <label>Debounce IN (min)</label>
-        <input id="inpDebIn" type="number"/>
-        <button class="mini" id="btnSaveDebIn">Salva</button>
-      </div>
+    <div class="setting-row">
+      <label>Pulisci log</label>
+      <button class="mini btn-io" id="btnPruneLogs">Pulisci</button>
+      <span class="tag">Elimina voci vecchie</span>
+    </div>
 
-      <div class="setting-row">
-        <label>Debounce OUT (min)</label>
-        <input id="inpDebOut" type="number"/>
-        <button class="mini" id="btnSaveDebOut">Salva</button>
-      </div>
+    <hr class="sep"/>
 
-      <div class="setting-row">
-        <label>Grace diurna casa vuota (min)</label>
-        <input id="inpEmptyGrace" type="number"/>
-        <button class="mini" id="btnSaveEmptyGrace">Salva</button>
-      </div>
+    <!-- Gruppo: LIFE Debounce -->
+    <h3 class="set-group">LIFE & Debounce</h3>
 
-      <div class="setting-row">
-        <label>PIANTE — intervallo minimo (min)</label>
-        <input id="inpPianteMin" type="number"/>
-        <button class="mini" id="btnSavePianteMin">Salva</button>
-      </div>
+    <div class="setting-row">
+      <label>LIFE Timeout (min)</label>
+      <select id="inpLifeTimeout">
+        <option value="30">30</option>
+        <option value="45">45</option>
+        <option value="60">60</option>
+        <option value="90">90</option>
+        <option value="120">120</option>
+      </select>
+      <button class="mini" id="btnSaveLifeTimeout">Salva</button>
+    </div>
 
-      <hr class="sep"/>
+    <div class="setting-row">
+      <label>Debounce IN (min)</label>
+      <select id="inpDebIn">
+        <option value="0">0</option>
+        <option value="2">2</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+      </select>
+      <button class="mini" id="btnSaveDebIn">Salva</button>
+    </div>
 
-      <div class="setting-row">
-        <label>Override</label>
-        <button class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
-        <span id="lblOverrideState" class="tag">—</span>
-      </div>
+    <div class="setting-row">
+      <label>Debounce OUT (min)</label>
+      <select id="inpDebOut">
+        <option value="0">0</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+      </select>
+      <button class="mini" id="btnSaveDebOut">Salva</button>
+    </div>
 
-      <div class="setting-row">
-        <label>Vacanza</label>
-        <button class="mini btn-io" id="btnToggleVacanza">ON/OFF</button>
-        <span id="lblVacanzaState" class="tag">—</span>
-      </div>
+    <div class="setting-row">
+      <label>Grace diurna (min)</label>
+      <select id="inpEmptyGrace">
+        <option value="0">0</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+        <option value="10">10</option>
+      </select>
+      <button class="mini" id="btnSaveEmptyGrace">Salva</button>
+    </div>
 
-    </section>
+    <div class="setting-row">
+      <label>PIANTE — min (min)</label>
+      <select id="inpPianteMin">
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="30">30</option>
+        <option value="60">60</option>
+        <option value="90">90</option>
+      </select>
+      <button class="mini" id="btnSavePianteMin">Salva</button>
+    </div>
+
+    <hr class="sep"/>
+
+    <!-- Override / Vacanza -->
+    <h3 class="set-group">Modalità</h3>
+
+    <div class="setting-row">
+      <label>Override</label>
+      <button class="mini btn-io" id="btnToggleOverride">ON/OFF</button>
+      <span id="lblOverrideState" class="tag">—</span>
+    </div>
+
+    <div class="setting-row">
+      <label>Vacanza</label>
+      <button class="mini btn-io" id="btnToggleVacanza">ON/OFF</button>
+      <span id="lblVacanzaState" class="tag">—</span>
+    </div>
+
+  </section>
+
   </main>
+
 
   <!-- ====================== ENERGY ======================= -->
   <main id="pageEnergy" class="page">
@@ -321,18 +409,12 @@
 
 </div>
 
-<!-- ====================== NAVBAR (ICONE) ======================= -->
-<nav class="bottom-nav" aria-label="Navigazione">
-  <button type="button" data-tab="home" class="nav-btn nav-active">🏠</button>
-  <button type="button" data-tab="people" class="nav-btn">👥</button>
-  <button type="button" data-tab="devices" class="nav-btn">📷</button>
-  <button type="button" data-tab="log" class="nav-btn">📜</button>
-  <button type="button" data-tab="cruscotto" class="nav-btn">📊</button>
-  <button type="button" data-tab="energy" class="nav-btn">⚡</button>
-</nav>
 
-<!-- ====================== JS INCLUDE ======================= -->
-<script src="api.js?v=oc_v2_3"></script>
-<script src="js/app.js?v=oc_v2_3"></script>
-</body>
-</html>
+<!-- ====================== NAVBAR TESTUALE ======================= -->
+<nav class="bottom-nav" aria-label="Navigazione">
+  <button type="button" data-tab="home"      class="nav-btn nav-active">Home</button>
+  <button type="button" data-tab="people"    class="nav-btn">Persone</button>
+  <button type="button" data-tab="devices"   class="nav-btn">Dispositivi</button>
+  <button type="button" data-tab="log"       class="nav-btn">Log</button>
+  <button type="button" data-tab="cruscotto" class="nav-btn">Cruscotto</button>
+  <button type="button" data-tab="energy"    class="nav-btn">Energia</button
