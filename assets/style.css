@@ -368,3 +368,7 @@ button.mini:hover{
 .issue-code{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
              font-size:12px; background:#111b2a; border:1px solid #223043; color:#cfe2ff; padding:2px 6px; border-radius:6px; }
 .badge.warn{ border-color:#ffd166; background:rgba(255,209,102,.14); color:#ffe7a6; }
+
+
+/* Utility */
+.is-hidden{ display:none !important; }
