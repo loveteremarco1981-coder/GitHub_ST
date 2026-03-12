@@ -211,6 +211,7 @@ function classifyLogCode(code){
   return "";
 }
 
+
 function renderIssuesReport(logs){
   const issues = [];
   (logs || []).forEach((r,idx)=>{
@@ -237,20 +238,32 @@ function renderIssuesReport(logs){
   if (cnt===0){
     const li = document.createElement("li");
     li.className = "issue-row";
-    li.innerHTML = `<div class="issue-id">Tutto OK</div><span class="badge ok">OK</span>`;
+    li.innerHTML = `<div class="issue-id">Tutto OK</div>
+                    <div class="issue-meta"><span class="badge ok">OK</span></div>`;
     ul.appendChild(li);
     return;
   }
 
   issues.slice(0,12).forEach(it=>{
-    const sev = (it.code.includes("_ERR") || it.code.startsWith("ERROR_")) ? "badge err" : "badge warn";
+    const isErr = (it.code.includes("_ERR") || it.code.startsWith("ERROR_") || it.code.startsWith("TEST_FAIL"));
+    const sevCls = isErr ? "badge err" : "badge warn";
+
     const li  = document.createElement("li");
     li.className = "issue-row";
-    li.innerHTML = `<div class="issue-id">${it.id}</div>
-      <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
+    li.innerHTML = `
+      <div>
+        <div class="issue-id">${it.id}</div>
+        <div class="sub">${it.desc ? it.desc : ''}</div>
+      </div>
+      <div class="issue-meta">
+        <span class="issue-code">${it.code}</span>
+        <span class="${sevCls}">${isErr ? "Errore" : "Warn"}</span>
+        <span class="sub">${fmtTs(it.ts)}</span>
+      </div>`;
     ul.appendChild(li);
   });
 }
+
 
 async function renderIssuesMiniInDashboard(){
   try{
