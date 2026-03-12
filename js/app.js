@@ -1,5 +1,6 @@
 "use strict";
 
+
 /* ===================== GLOBALI ===================== */
 let MODEL = null;
 let ACTIVE_TAB = "home";
