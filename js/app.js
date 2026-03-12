@@ -1,4 +1,3 @@
-/* app.js — GoAppSync UI (Ottimizzato 2026, compatibile con il tuo HTML/API) */
 "use strict";
 
 /* ===================== GLOBALI ===================== */
@@ -11,7 +10,6 @@ const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 function toast(msg){ try{ console.log(msg); }catch(_){ alert(msg); } }
 if (!window.EXEC_URL){
-  // Non blocco l'app: solo avviso in console
   console.error("EXEC_URL non definito: verifica che api.js sia incluso PRIMA di app.js");
 }
 
@@ -29,9 +27,9 @@ function timeOnly(v){
     return v.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
   }
   const s = String(v).trim();
-  let m = s.match(/^(\d{1,2}):(\d{2})$/);        if (m) return m[1].padStart(2,"0")+":"+m[2];
-      m = s.match(/^(\d{1,2})\.(\d{2})$/);       if (m) return m[1].padStart(2,"0")+":"+m[2];
-  const d = new Date(s);                         if (!isNaN(d)) return d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+  let m = s.match(/^(\d{1,2}):(\d{2})$/); if (m) return m[1].padStart(2,"0")+":"+m[2];
+      m = s.match(/^(\d{1,2})\.(\d{2})$/); if (m) return m[1].padStart(2,"0")+":"+m[2];
+  const d = new Date(s); if (!isNaN(d)) return d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
       m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*?(\d{1,2})[:.](\d{2})/);
   if (m) return m[4].padStart(2,"0")+":"+m[5];
   return "—";
@@ -43,12 +41,12 @@ function jsonpModel(qs=""){
   return new Promise((resolve,reject)=>{
     try{
       const cb = "cb_model_"+Math.random().toString(36).slice(2);
-      // pulizia sicura del callback
-      const cleanup = () => { try{ delete window[cb]; }catch(_){ } };
-      window[cb] = (data)=>{ cleanup(); resolve(data); };
+      window[cb] = (data)=>{ delete window[cb]; resolve(data); };
+
       const s = document.createElement("script");
       s.src = `${base}${qs}${qs.includes("?")?"&":"?"}callback=${cb}&t=${Date.now()}`;
-      s.onerror = (e)=>{ cleanup(); reject(e); };
+      s.onerror = (e)=>{ delete window[cb]; reject(e); };
+
       document.body.appendChild(s);
       setTimeout(()=>{ try{s.remove();}catch(_){ } }, 8000);
     }catch(e){ reject(e); }
@@ -58,11 +56,14 @@ function jsonpModel(qs=""){
 async function fetchModelOnce(){
   const m = await jsonpModel();
   MODEL = (m && typeof m==="object") ? m : null;
-  window.__lastModel__ = MODEL; // comodo per la diagnostica in Console
+  window.__lastModel__ = MODEL;
+
   if (!MODEL) throw new Error("MODEL vuoto");
+
   renderHome(MODEL);
   renderCruscotto(MODEL);
   renderEnergyPage(MODEL);
+
   return true;
 }
 
@@ -72,9 +73,7 @@ async function loadModelWithRetry(){
     try{
       if (d) await new Promise(r=>setTimeout(r,d));
       return await fetchModelOnce();
-    }catch(e){
-      if (d===delays[delays.length-1]) console.error("MODEL failed", e);
-    }
+    }catch(_){}
   }
   return false;
 }
@@ -91,101 +90,63 @@ function setBadgeState(st){
 
 function navTo(tab){
   ACTIVE_TAB = tab;
+
   const map = {
-    home:"#pageHome", people:"#pagePeople", devices:"#pageDevices",
-    log:"#pageLog", cruscotto:"#pageCruscotto", energy:"#pageEnergy",
-    settings:"#pageSettings", tests:"#pageTests"
+    home:"#pageHome",
+    people:"#pagePeople",
+    devices:"#pageDevices",
+    log:"#pageLog",
+    cruscotto:"#pageCruscotto",
+    energy:"#pageEnergy",
+    settings:"#pageSettings",
+    tests:"#pageTests"
   };
+
   $$(".page").forEach(p=>p.classList.remove("page-active"));
   if (map[tab]) $(map[tab]).classList.add("page-active");
 
-  // Footer a icone (Versione B)
   $$(".bottom-nav .nav-btn").forEach(b=>b.classList.remove("nav-active"));
   const nb = document.querySelector(`.bottom-nav .nav-btn[data-tab="${tab}"]`);
   if (nb) nb.classList.add("nav-active");
 
-  // On enter
-  if (tab==="people")    loadPeople();
-  if (tab==="devices")   loadCams();
-  if (tab==="log")       loadErrors();
-  if (tab==="tests")     refreshTestsPage(true);
+  if (tab==="people") loadPeople();
+  if (tab==="devices") loadCams();
+  if (tab==="log") loadErrors();
+  if (tab==="tests") refreshTestsPage(true);
   if (tab==="cruscotto") renderIssuesMiniInDashboard();
-  if (tab==="energy")    renderEnergyPage(MODEL);
+  if (tab==="energy") renderEnergyPage(MODEL);
 }
+
 window.navTo = navTo;
 
-/* ===================== HOME/CRUSCOTTO/ENERGY ===================== */
+/* ===================== HOME ===================== */
 function renderHome(m){
   if (!m) return;
+
   setBadgeState(m.state);
 
   if (m.weather){
-    if ($("#weatherIcon")) $("#weatherIcon").textContent = (m.weather.iconEmoji || "🌤");
-    if ($("#weatherTemp")) $("#weatherTemp").textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
-    if ($("#weatherWind")) $("#weatherWind").textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
+    $("#weatherIcon").textContent = m.weather.iconEmoji || "🌤";
+    $("#weatherTemp").textContent = m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°";
+    $("#weatherWind").textContent = m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h";
   }
 
-  const kwh = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
-  if ($("#energyValue")) $("#energyValue").textContent = kwh;
+  $("#energyValue").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
 
-  if ($("#lblOverride")) $("#lblOverride").textContent = (m.override ? "On" : "Off");
-  if ($("#lblVacanza"))  $("#lblVacanza").textContent  = (m.vacanza ? "On" : "Off");
-  $("#btnOverride")?.classList.toggle("on", !!m.override);
-  $("#btnVacanza")?.classList.toggle("on", !!m.vacanza);
+  $("#lblOverride").textContent = m.override ? "On" : "Off";
+  $("#lblVacanza").textContent  = m.vacanza ? "On" : "Off";
+
+  $("#btnOverride").classList.toggle("on", !!m.override);
+  $("#btnVacanza").classList.toggle("on", !!m.vacanza);
 
   const st = String(m.state||"").toUpperCase();
-  const isUpGuess = (st==="COMFY_DAY");
-  if ($("#lblAlza")) $("#lblAlza").textContent = isUpGuess ? "Abbassa" : "Alza";
+  $("#lblAlza").textContent = st==="COMFY_DAY" ? "Abbassa" : "Alza";
 
   const ppl = m.people || [];
-  if ($("#peopleSummary")) $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
+  $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
 }
 
-function camsText(m){
-  const s = String(m?.state||"").toUpperCase();
-  if (s.startsWith("SECURITY")) return "ON · ON";
-  if (s==="COMFY_NIGHT")       return "OFF · ON";
-  return "OFF · OFF";
-}
-
-function renderCruscotto(m){
-  const el = $("#cruscottoGrid"); if (!el || !m) return;
-  const tiles = [
-    {key:'state',    title:'Stato',      icon:'🟢', value:(m.state||'—')},
-    {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
-    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'),     value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
-    {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
-    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba)},
-    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto)},
-    {key:'energy',   title:'Energy',     icon:'⚡', value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--')},
-    {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`}
-  ];
-
-  el.innerHTML = tiles.map(t=>`
-    <div class="cr-tile" data-key="${t.key}">
-      <div class="cr-icon">${t.icon}</div>
-      <div class="cr-title">${t.title}</div>
-      <div class="cr-value">${t.value}</div>
-    </div>`).join("");
-
-  // Shortcut verso pagina Energy
-  el.querySelectorAll('.cr-tile[data-key="energy"]').forEach(t=>{
-    t.style.cursor = "pointer";
-    t.addEventListener("click", ()=>navTo("energy"));
-  });
-
-  renderIssuesMiniInDashboard();
-}
-
-function renderEnergyPage(m){
-  if (!m) return;
-  if ($("#e2Current")) $("#e2Current").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "-- kWh");
-  if ($("#e2Today"))  $("#e2Today").textContent   = (m.energy?.kwh!=null ? (m.energy.kwh*0.6).toFixed(1) : "--");
-  if ($("#e2Week"))   $("#e2Week").textContent    = (m.energy?.kwh!=null ? (m.energy.kwh*4).toFixed(1) : "--");
-  if ($("#e2Offline"))$("#e2Offline").textContent = (m.devicesOfflineCount!=null ? m.devicesOfflineCount : "--");
-}
-
-/* ===================== PEOPLE / CAMS / LOG ===================== */
+/* ===================== CAMS ===================== */
 async function loadPeople(){
   try{
     const r = await jsonpModel("?people=1");
@@ -225,7 +186,7 @@ async function loadErrors(){
 
     const arr = (r?.logs || [])
       .filter(e => (e.code.includes("ERR") || e.code.includes("ERROR")))
-      .filter(e => !String(e.code).startsWith("ROUTER_")); // purga residui Router
+      .filter(e => !String(e.code).startsWith("ROUTER_"));
 
     if (arr.length===0){
       const li = document.createElement("li"); li.textContent = "Nessun errore"; ul.appendChild(li); return;
@@ -239,7 +200,7 @@ async function loadErrors(){
   }catch(_){}
 }
 
-/* ===================== CLASSIFY & ISSUES ===================== */
+/* ===================== ISSUES ===================== */
 function classifyLogCode(code){
   const c = String(code||"");
   if (c.startsWith("TEST_PASS")) return "PASS";
@@ -331,9 +292,10 @@ async function refreshTestsPage(force=false){
     renderIssuesReport(r?.logs || []);
   }catch(_){}
 }
+
 window.refreshTestsPage = refreshTestsPage;
 
-/* ===================== SETTINGS PAGE (completa) ===================== */
+/* ===================== SETTINGS PAGE ===================== */
 async function loadSettingsPage(){
   try{
     const [
@@ -346,7 +308,7 @@ async function loadSettingsPage(){
       api.getEmptyGrace(), api.getPianteMinInt(), apiFetch('get_flags')
     ]);
 
-    const setVal=(id,v)=>{ 
+    const setVal = (id,v)=>{ 
       const el=$("#"+id); 
       if(el) el.value = (v!=null ? v : ""); 
     };
@@ -354,7 +316,7 @@ async function loadSettingsPage(){
     setVal("inpStrict", strict?.strict);
     setVal("inpHold",   hold?.hold);
 
-    $("#selKaAuto")?.value = String(kaa?.ka_auto).toUpperCase() === "TRUE" ? "true" : "false";
+    $("#selKaAuto").value = String(kaa?.ka_auto).toUpperCase() === "TRUE" ? "true" : "false";
 
     setVal("inpExitGuard",   exitG?.exit_guard);
     setVal("inpExitConfirm", exitC?.exit_confirm);
@@ -366,16 +328,14 @@ async function loadSettingsPage(){
     setVal("inpEmptyGrace",  grace?.empty_grace);
     setVal("inpPianteMin",   pMin?.min);
 
-    $("#lblOverrideState")?.textContent = flags?.override ? "ON" : "OFF";
-    $("#lblVacanzaState") ?.textContent = flags?.vacanza  ? "ON" : "OFF";
+    $("#lblOverrideState").textContent = flags?.override ? "ON" : "OFF";
+    $("#lblVacanzaState").textContent  = flags?.vacanza  ? "ON" : "OFF";
 
   }catch(e){
     console.error("loadSettingsPage error:", e);
   }
-}
 
-
-  // Binding idempotente
+  // Binding
   const bind = (id,fn)=>{ const b=$("#"+id); if(b && !b._wired){ b._wired=true; b.onclick=fn; } };
 
   bind("btnSaveStrict",      async()=>{ const v=+$("#inpStrict").value;       const r=await api.setStrict(v);        toast(r.ok?'Salvato':'Errore'); });
@@ -394,43 +354,21 @@ async function loadSettingsPage(){
   bind("btnSaveEmptyGrace",  async()=>{ const v=+$("#inpEmptyGrace").value;   const r=await api.setEmptyGrace(v);    toast(r.ok?'Salvato':'Errore'); });
   bind("btnSavePianteMin",   async()=>{ const v=+$("#inpPianteMin").value;    const r=await api.setPianteMinInt(v);  toast(r.ok?'Salvato':'Errore'); });
 
-  bind("btnToggleOverride",  async()=>{ const f=await apiFetch("get_flags"); const cur=!!(f?.ok&&f.override); const r=await apiFetch("set_override",{value:String(!cur).toUpperCase()}); toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
-  bind("btnToggleVacanza",   async()=>{ const f=await apiFetch("get_flags"); const cur=!!(f?.ok&&f.vacanza);  const r=await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});  toast(r.ok?'OK':'Errore'); loadSettingsPage(); });
-}
+  bind("btnToggleOverride",  async()=>{ 
+    const f=await apiFetch("get_flags"); 
+    const cur=!!(f?.ok && f.override); 
+    const r=await apiFetch("set_override",{value:String(!cur).toUpperCase()}); 
+    toast(r.ok?'OK':'Errore'); 
+    loadSettingsPage(); 
+  });
 
-/* ===================== TEST QUICK API ===================== */
-function setStatus(id,text,ok=true){
-  const el = $("#"+id); if (!el) return;
-  el.textContent = (text || "");
-  el.style.color = ok ? "#7bd88f" : "#ff6b6b";
-}
-
-async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
-  if (statusId) setStatus(statusId, `Esecuzione: ${op}…`, true);
-  const btn = btnId ? $("#"+btnId) : null;
-  if (btn) btn.disabled = true;
-
-  try{
-    const res = await api.quick(op, params);
-    if (res && res.ok){
-      const map = {
-        list:"Lista trigger → Log",
-        ka_on:`KA ON ${params?.name||""} (${params?.minutes||""}m)`,
-        ka_off:`KA OFF ${params?.name||""}`,
-        all_out:"Tutti OUT", all_in:"Tutti IN", verify_grace:"Verifica grace", snap:"Snapshot"
-      };
-      if (statusId) setStatus(statusId, (map[op]||"OK")+" ✓", true);
-      if (["all_out","all_in","verify_grace","snap"].includes(op)){
-        try{ window.dispatchEvent(new Event("refreshDashboard")); }catch(_){}
-      }
-    }else{
-      if (statusId) setStatus(statusId, "Errore: "+(res?.error||"unknown"), false);
-    }
-  }catch(e){
-    if (statusId) setStatus(statusId, "Errore rete: "+e.message, false);
-  }finally{
-    if (btn) btn.disabled = false;
-  }
+  bind("btnToggleVacanza",   async()=>{ 
+    const f=await apiFetch("get_flags"); 
+    const cur=!!(f?.ok && f.vacanza);  
+    const r=await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});  
+    toast(r.ok?'OK':'Errore'); 
+    loadSettingsPage(); 
+  });
 }
 
 /* ===================== REFRESH CICLICO ===================== */
@@ -446,29 +384,31 @@ async function refreshNow(){
 
 /* ===================== WIRING ===================== */
 function wire(){
-  // Navbar (icone)
   $$(".bottom-nav .nav-btn").forEach(b=>{
     b.addEventListener("click", ()=>navTo(b.getAttribute("data-tab")));
   });
 
-  // People bar
   $("#peopleBar")?.addEventListener("click", ()=>navTo("people"));
 
-  // Home actions
   $("#btnOverride")?.addEventListener("click", async()=>{
-    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.override);
+    const f1=await apiFetch("get_flags"); 
+    const cur=!!(f1?.ok && f1.override);
     await apiFetch("set_override",{value:String(!cur).toUpperCase()});
-    toast("Override: "+(!cur?"On":"Off")); refreshNow();
+    toast("Override: "+(!cur?"On":"Off")); 
+    refreshNow();
   });
 
   $("#btnVacanza")?.addEventListener("click", async()=>{
-    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.vacanza);
+    const f1=await apiFetch("get_flags"); 
+    const cur=!!(f1?.ok && f1.vacanza);
     await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});
-    toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
+    toast("Vacanza: "+(!cur?"On":"Off")); 
+    refreshNow();
   });
 
   $("#btnPiante")?.addEventListener("click", async()=>{
-    const r=await apiFetch("piante"); toast(r?.ok?"Piante avviato":"Piante bloccate");
+    const r=await apiFetch("piante"); 
+    toast(r?.ok?"Piante avviato":"Piante bloccate");
   });
 
   $("#btnAlza")?.addEventListener("click", async()=>{
@@ -477,25 +417,23 @@ function wire(){
     else       { await apiFetch("alza_tutto");    $("#lblAlza").textContent="Abbassa"; }
   });
 
-  // Cruscotto toolbar
   $("#btnOpenSettings")?.addEventListener("click", ()=>navTo("settings"));
   $("#btnOpenTests")?.addEventListener("click",     ()=>navTo("tests"));
 
-  // Test page top
   $("#btnBackToCrusc")?.addEventListener("click",   ()=>navTo("cruscotto"));
   $("#btnRefreshReport")?.addEventListener("click", ()=>refreshTestsPage(true));
+
   $("#btnRunFullTestTop")?.addEventListener("click", async()=>{
     try{
-      const r = await apiFetch("diag_full_test");
-      const el= $("#testSuiteStatusTop"); if (el) el.textContent = (r?.ok?"OK ✓":"Errore");
+      const r=await apiFetch("diag_full_test");
+      $("#testSuiteStatusTop").textContent = r?.ok?"OK ✓":"Errore";
     }catch(e){
-      const el= $("#testSuiteStatusTop"); if (el) el.textContent = "Errore rete";
+      $("#testSuiteStatusTop").textContent='Errore rete';
     }
   });
 
-  // Quick test buttons
   const bind=(id,fn)=>{ const el=$("#"+id); if(el) el.onclick=fn; };
-  bind("tQuickList",   ()=>runQuick("list",{},  "tQuickList","diagStatus"));
+  bind("tQuickList",   ()=>runQuick("list",{}, "tQuickList","diagStatus"));
   bind("tKaOn",        ()=>runQuick("ka_on",{name:"marco",minutes:5}, "tKaOn","diagStatus"));
   bind("tKaOff",       ()=>runQuick("ka_off",{name:"marco"}, "tKaOff","diagStatus"));
   bind("tAllIn",       ()=>runQuick("all_in",{}, "tAllIn","diagStatus"));
