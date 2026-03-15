@@ -34,6 +34,27 @@ function timeOnly(v){
   return "—";
 }
 
+/* === NUOVO: formatter sicuro per evitare [object Object] === */
+function asText(v){
+  if (v === null || v === undefined) return "—";
+  const t = typeof v;
+  if (t === "string")  return v || "—";
+  if (t === "number")  return Number.isFinite(v) ? String(v) : "—";
+  if (t === "boolean") return v ? "On" : "Off";
+  if (Array.isArray(v)) return v.map(asText).join(", ");
+  // oggetto: prova campi parlanti, altrimenti JSON compatto
+  const keys = ["label","name","title","value","id","text","code"];
+  for (const k of keys){ if (k in v && v[k] != null) return asText(v[k]); }
+  try { return JSON.stringify(v); } catch { return String(v); }
+}
+/* === NUOVO: normalizza lo stato in un "codice" (per classi/logica) === */
+function normState(s){
+  if (s === null || s === undefined) return "";
+  if (typeof s === "string") return s;
+  if (typeof s === "object") return String(s.id || s.code || s.name || s.label || s.value || "");
+  return String(s);
+}
+
 /* ===================== MODEL (JSONP) ===================== */
 function jsonpModel(qs=""){
   const base = window.EXEC_URL;
@@ -74,11 +95,18 @@ async function loadModelWithRetry(){
 /* ===================== NAVIGAZIONE ===================== */
 function setBadgeState(st){
   const el = $("#stateBadge"); if(!el) return;
+
+  const code = normState(st).toUpperCase();     // <=== USA normState
   el.className = "state-badge";
-  if (!st){ el.textContent = "—"; return; }
-  const s = String(st).toUpperCase();
-  el.classList.add(s.startsWith("COMFY") ? "ok" : "alert");
-  el.textContent = s.replace("_"," ");
+  if (!code){ el.textContent = "—"; return; }
+
+  el.classList.add(code.startsWith("COMFY") ? "ok" : "alert");
+
+  // label leggibile: preferisci label/name se disponibili
+  const label = (typeof st === "object" && (st.label || st.name))
+    ? String(st.label || st.name)
+    : code.replace("_"," ");
+  el.textContent = label;
 }
 function navTo(tab){
   ACTIVE_TAB = tab;
@@ -113,7 +141,7 @@ function renderHome(m){
     wp?.classList?.add("is-hidden");
   }else{
     wp?.classList?.remove("is-hidden");
-    $("#weatherIcon").textContent = m.weather.iconEmoji || "🌤";
+    $("#weatherIcon").textContent = asText(m.weather.iconEmoji || "🌤");
     $("#weatherTemp").textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
     $("#weatherWind").textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
   }
@@ -125,14 +153,14 @@ function renderHome(m){
   $("#btnOverride").classList.toggle("on", !!m.override);
   $("#btnVacanza").classList.toggle("on", !!m.vacanza);
 
-  const st = String(m.state||"").toUpperCase();
-  $("#lblAlza").textContent = st==="COMFY_DAY" ? "Abbassa" : "Alza";
+  const stCode = normState(m.state).toUpperCase(); // <=== USA normState per la logica
+  $("#lblAlza").textContent = stCode==="COMFY_DAY" ? "Abbassa" : "Alza";
 
   const ppl = m.people || [];
   $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
 }
 function camsText(m){
-  const s = String(m?.state||"").toUpperCase();
+  const s = normState(m?.state).toUpperCase();   // <=== USA normState
   if (s.startsWith("SECURITY")) return "ON · ON";
   if (s==="COMFY_NIGHT")       return "OFF · ON";
   return "OFF · OFF";
@@ -140,7 +168,7 @@ function camsText(m){
 function renderCruscotto(m){
   const el = $("#cruscottoGrid"); if (!el || !m) return;
   const tiles = [
-    {key:'state',    title:'Stato',      icon:'🟢', value:(m.state||'—')},
+    {key:'state',    title:'Stato',      icon:'🟢', value: asText(m.state)},   // <=== asText
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
     {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'), value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
@@ -182,8 +210,8 @@ async function loadPeople(){
       const ts = p.ts ? fmtTs(p.ts) : (p.tsText || "—");
       const li = document.createElement("li");
       li.innerHTML = `
-        <div>${p.name}</div>
-        <div class="sub">${p.lastEvent||"—"} • ${ts}</div>
+        <div>${asText(p.name)}</div>
+        <div class="sub">${asText(p.lastEvent)||"—"} • ${ts}</div>
         <div><span class="badge ${p.online?'ok':'err'}">${p.online?'Online':'Offline'}</span></div>`;
       ul.appendChild(li);
     }
@@ -216,7 +244,7 @@ async function loadErrors(){
     }
     arr.forEach(e=>{
       const li = document.createElement("li");
-      li.innerHTML = `<div>${e.code}</div><div class="sub">${e.desc||""} • ${fmtTs(e.ts)}</div>`;
+      li.innerHTML = `<div>${asText(e.code)}</div><div class="sub">${asText(e.desc)||""} • ${fmtTs(e.ts)}</div>`;
       ul.appendChild(li);
     });
   }catch(_){}
@@ -272,11 +300,11 @@ function renderIssuesReport(logs){
     li.className = "issue-row";
     li.innerHTML = `
       <div>
-        <div class="issue-id">${it.id}</div>
-        <div class="sub">${it.desc ? it.desc : ''}</div>
+        <div class="issue-id">${asText(it.id)}</div>
+        <div class="sub">${it.desc ? asText(it.desc) : ''}</div>
       </div>
       <div class="issue-meta">
-        <span class="issue-code">${it.code}</span>
+        <span class="issue-code">${asText(it.code)}</span>
         <span class="${sevCls}">${isErr ? "Errore" : "Warn"}</span>
         <span class="sub">${fmtTs(it.ts)}</span>
       </div>`;
@@ -305,8 +333,8 @@ async function renderIssuesMiniInDashboard(){
       const sev = (it.code.includes("_ERR") ? "badge err" : "badge warn");
       const li  = document.createElement("li");
       li.className = "issue-row";
-      li.innerHTML = `<div class="issue-id">${it.code}</div>
-        <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
+      li.innerHTML = `<div class="issue-id">${asText(it.code)}</div>
+        <div class="issue-meta"><span>${asText(it.code)}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
       ul.appendChild(li);
     });
   }catch(_){}
@@ -381,18 +409,18 @@ async function refreshNow(){
 /* ===================== WIRING ===================== */
 function wire(){
   $$(".bottom-nav .nav-btn").forEach(b=>{
-    b.addEventListener("click", ()=>navTo(b.getAttribute("data-tab")));
+    b.addEventListener("click", () => navTo(b.getAttribute("data-tab")));
   });
 
-  $("#peopleBar")?.addEventListener("click", ()=>navTo("people"));
+  $("#peopleBar")?.addEventListener("click", () => navTo("people"));
 
-  $("#btnOverride")?.addEventListener("click", async()=>{
+  $("#btnOverride")?.addEventListener("click", async() =>{
     const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.override);
     await apiFetch("set_override",{value:String(!cur).toUpperCase()});
     toast("Override: "+(!cur?"On":"Off")); refreshNow();
   });
 
-  $("#btnVacanza")?.addEventListener("click", async()=>{
+  $("#btnVacanza")?.addEventListener("click", async() =>{
     const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.vacanza);
     await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});
     toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
@@ -418,11 +446,11 @@ function wire(){
     }
   });
 
-  $("#btnOpenSettings")?.addEventListener("click", ()=>navTo("settings"));
-  $("#btnOpenTests")?.addEventListener("click",     ()=>navTo("tests"));
+  $("#btnOpenSettings")?.addEventListener("click", () => navTo("settings"));
+  $("#btnOpenTests")?.addEventListener("click",     () => navTo("tests"));
 
-  $("#btnBackToCrusc")?.addEventListener("click",   ()=>navTo("cruscotto"));
-  $("#btnRefreshReport")?.addEventListener("click", ()=>refreshTestsPage(true));
+  $("#btnBackToCrusc")?.addEventListener("click",   () => navTo("cruscotto"));
+  $("#btnRefreshReport")?.addEventListener("click", () => refreshTestsPage(true));
 
   $("#btnRunFullTestTop")?.addEventListener("click", async()=>{
     try{ const r = await apiFetch("diag_full_test");
@@ -483,9 +511,9 @@ async function runFullTestUI(name='marco'){
     const li = document.createElement('li');
     li.className = 'step ' + (s.skipped ? 'skip' : (s.ok ? 'ok' : 'err'));
     li.innerHTML = `
-      <div class="step-title">${s.title}</div>
-      <div class="step-meta">${s.ms} ms</div>
-      <div class="step-msg">${s.msg||''}</div>`;
+      <div class="step-title">${asText(s.title)}</div>
+      <div class="step-meta">${asText(s.ms)} ms</div>
+      <div class="step-msg">${asText(s.msg)||''}</div>`;
     ul.appendChild(li);
   });
 
@@ -496,3 +524,48 @@ async function runFullTestUI(name='marco'){
     top.style.color = res.ok ? "#7bd88f" : "#ff6b6b";
   }
 }
+
+/* ===================== FALLBACK API (minimo per far funzionare i bottoni) ===================== */
+(function ensureApi(){
+  // apiFetch: prova POST JSON, poi fallback GET con query string
+  if (typeof window.apiFetch !== "function"){
+    window.apiFetch = async function apiFetch(op, params={}){
+      const url = window.EXEC_URL || "";
+      if (!url) throw new Error("EXEC_URL mancante");
+      const payload = { op, ...(params||{}) };
+      // 1) tentativo POST JSON
+      try{
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          mode: "cors",
+          credentials: "omit"
+        });
+        const ct = res.headers.get("content-type")||"";
+        const data = ct.includes("application/json") ? await res.json() : { ok: res.ok, text: await res.text() };
+        if (!res.ok) throw new Error(data?.error || res.statusText);
+        return data;
+      }catch(_e){
+        // 2) fallback GET
+        const qs = new URLSearchParams();
+        qs.set("op", op);
+        Object.entries(params||{}).forEach(([k,v])=>{
+          qs.set(k, (v && typeof v === "object") ? JSON.stringify(v) : String(v));
+        });
+        const r2 = await fetch(url + (url.includes("?")?"&":"?") + qs.toString(), { method:"GET" });
+        try{ return await r2.json(); }catch(_){ return { ok:r2.ok, status:r2.status }; }
+      }
+    };
+  }
+
+  // api.version / api.quick minimi
+  window.api = window.api || {};
+  if (typeof window.api.version !== "function"){
+    window.api.version = async () => window.apiFetch("version");
+  }
+  if (typeof window.api.quick !== "function"){
+    // Chiama direttamente l'operazione richiesta (es. "ka_on", "list", "all_in", ...)
+    window.api.quick = async (op, params={}) => window.apiFetch(op, params);
+  }
+})();
