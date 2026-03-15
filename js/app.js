@@ -33,85 +33,6 @@ function timeOnly(v){
   if (m) return m[4].padStart(2,"0")+":"+m[5];
   return "—";
 }
-/* Evita [object Object] dove serve */
-function asText(v){
-  if (v === null || v === undefined) return "—";
-  const t = typeof v;
-  if (t === "string")  return v || "—";
-  if (t === "number")  return Number.isFinite(v) ? String(v) : "—";
-  if (t === "boolean") return v ? "On" : "Off";
-  if (Array.isArray(v)) return v.map(asText).join(", ");
-  if (t === "object"){
-    const keys = ["label","name","title","value","id","text","code"];
-    for (const k of keys){ if (k in v && v[k] != null) return asText(v[k]); }
-    try { return JSON.stringify(v); } catch { return String(v); }
-  }
-  return String(v);
-}
-
-/* ===================== GETTER ROBUSTI (STATO / FLAGS / METEO / ALBA-TRAMONTO) ===================== */
-function toTitle(s){
-  return String(s||"")
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-/** Stato: priorità a Config!B1 (STATO), poi state.id|code|state|mode|value, infine day_night */
-function getStateFromModel(m){
-  if (!m) return { code:"", label:"—", source:null };
-  const cfg = m.config || m.Config || {};
-  let code = cfg.STATO || cfg.stato || m.STATO || m.stato;
-  if (code) return { code:String(code).toUpperCase(), label: toTitle(code), source:"config" };
-
-  const s = m.state || {};
-  code = s.id || s.code || s.state || s.mode || s.value;
-  if (code) return { code:String(code).toUpperCase(), label: toTitle(code), source:"state" };
-
-  code = s.day_night || m.day_night;
-  if (code){
-    const up = String(code).toUpperCase();
-    const label = (up==="GIORNO" ? "Giorno" : (up==="NOTTE" ? "Notte" : toTitle(up)));
-    return { code: up, label, source:"day_night" };
-  }
-  return { code:"", label:"—", source:null };
-}
-
-/** Flags override/vacanza: supporta backend diversi */
-function boolish(v){
-  if (v === true) return true;
-  if (v === false) return false;
-  if (v == null) return false;
-  const s = String(v).trim().toLowerCase();
-  return ["true","1","on","yes","y","si","s"].includes(s);
-}
-function getFlags(m){
-  const f = (m && (m.flags || m.flag || m.Flags)) || {};
-  const cfg = m?.config || m?.Config || {};
-  return {
-    override: boolish( f.override ?? cfg.OVERRIDE ?? cfg.override ),
-    vacanza:  boolish( f.vacanza  ?? cfg.VACANZA  ?? cfg.vacanza  ),
-  };
-}
-
-/** Meteo fallback su Config (TEMPC/WINDKMH) */
-function getWeather(m){
-  const w = m?.weather || {};
-  const cfg = m?.config || m?.Config || {};
-  const tempC   = (w.tempC   != null) ? w.tempC   : (cfg.TEMPC   != null ? Number(cfg.TEMPC)   : null);
-  const windKmh = (w.windKmh != null) ? w.windKmh : (cfg.WINDKMH != null ? Number(cfg.WINDKMH) : null);
-  const iconEmoji = w.iconEmoji || "🌤";
-  return { tempC, windKmh, iconEmoji };
-}
-
-/** Alba/Tramonto: state.sunrise/sunset o next.alba/tramonto */
-function getSunTimes(m){
-  const n  = m?.next || {};
-  const st = m?.state || {};
-  const alba     = n.alba     || st.sunrise || st.nextSunrise || null;
-  const tramonto = n.tramonto || st.sunset  || st.nextSunset  || null;
-  return { alba, tramonto };
-}
 
 /* ===================== MODEL (JSONP) ===================== */
 function jsonpModel(qs=""){
@@ -151,22 +72,13 @@ async function loadModelWithRetry(){
 }
 
 /* ===================== NAVIGAZIONE ===================== */
-// Delegation GLOBALE per sicurezza (anche se wire() non parte)
-document.addEventListener("click", (ev)=>{
-  const btn = ev.target.closest?.('.bottom-nav .nav-btn[data-tab], [data-tab].nav-btn');
-  if (!btn) return;
-  ev.preventDefault();
-  const tab = btn.getAttribute("data-tab");
-  if (tab) navTo(tab);
-});
-
-function setBadgeState(m){
+function setBadgeState(st){
   const el = $("#stateBadge"); if(!el) return;
-  const st = getStateFromModel(m);
   el.className = "state-badge";
-  if (!st.code){ el.textContent = "—"; return; }
-  el.classList.add(st.code.startsWith("COMFY") ? "ok" : "alert");
-  el.textContent = st.label;
+  if (!st){ el.textContent = "—"; return; }
+  const s = String(st).toUpperCase();
+  el.classList.add(s.startsWith("COMFY") ? "ok" : "alert");
+  el.textContent = s.replace("_"," ");
 }
 function navTo(tab){
   ACTIVE_TAB = tab;
@@ -194,66 +106,46 @@ window.navTo = navTo;
 /* ===================== HOME/CRUSCOTTO/ENERGY ===================== */
 function renderHome(m){
   if (!m) return;
+  setBadgeState(m.state);
 
-  // Stato badge
-  setBadgeState(m);
-
-  // Meteo
-  const weather = getWeather(m);
   const wp = $("#weatherPill");
-  if (weather.tempC==null && weather.windKmh==null){
+  if (!m.weather || (m.weather.tempC==null && m.weather.windKmh==null)){
     wp?.classList?.add("is-hidden");
   }else{
     wp?.classList?.remove("is-hidden");
-    $("#weatherIcon").textContent = weather.iconEmoji;
-    $("#weatherTemp").textContent = (weather.tempC!=null ? Math.round(weather.tempC)+"°" : "--°");
-    $("#weatherWind").textContent = (weather.windKmh!=null ? Math.round(weather.windKmh)+" km/h" : "-- km/h");
+    $("#weatherIcon").textContent = m.weather.iconEmoji || "🌤";
+    $("#weatherTemp").textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
+    $("#weatherWind").textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
   }
 
-  // Energy
   $("#energyValue").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
 
-  // Flags override/vacanza (da qualsiasi fonte)
-  const flags = getFlags(m);
-  $("#lblOverride").textContent = flags.override ? "On" : "Off";
-  $("#lblVacanza").textContent  = flags.vacanza  ? "On" : "Off";
-  $("#btnOverride").classList.toggle("on", !!flags.override);
-  $("#btnVacanza").classList.toggle("on", !!flags.vacanza);
+  $("#lblOverride").textContent = m.override ? "On" : "Off";
+  $("#lblVacanza").textContent  = m.vacanza ? "On" : "Off";
+  $("#btnOverride").classList.toggle("on", !!m.override);
+  $("#btnVacanza").classList.toggle("on", !!m.vacanza);
 
-  // Tapparelle: etichetta dipende dallo stato
-  const st = getStateFromModel(m).code;
+  const st = String(m.state||"").toUpperCase();
   $("#lblAlza").textContent = st==="COMFY_DAY" ? "Abbassa" : "Alza";
 
-  // Persone summary (se non c'è nel MODEL provo a leggerle al volo)
-  const ppl = Array.isArray(m.people) ? m.people : [];
+  const ppl = m.people || [];
   $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
-  if (!ppl.length){
-    // fallback async: aggiorna il pill appena arriva
-    jsonpModel("?people=1").then(r=>{
-      const arr = normalizePeopleArray(r);
-      $("#peopleSummary").textContent = `${arr.filter(p=>p.online).length} online / ${arr.length} totali`;
-    }).catch(()=>{});
-  }
 }
 function camsText(m){
-  const s = getStateFromModel(m).code;
+  const s = String(m?.state||"").toUpperCase();
   if (s.startsWith("SECURITY")) return "ON · ON";
   if (s==="COMFY_NIGHT")       return "OFF · ON";
   return "OFF · OFF";
 }
 function renderCruscotto(m){
   const el = $("#cruscottoGrid"); if (!el || !m) return;
-
-  const { alba, tramonto } = getSunTimes(m);
-  const weather = getWeather(m);
-
   const tiles = [
-    {key:'state',    title:'Stato',      icon:'🟢', value: getStateFromModel(m).label},
+    {key:'state',    title:'Stato',      icon:'🟢', value:(m.state||'—')},
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
-    {key:'meteo',    title:'Meteo',      icon:(weather.iconEmoji||'🌤'), value:`${weather.tempC!=null?Math.round(weather.tempC):'--'}° · ${weather.windKmh!=null?Math.round(weather.windKmh):'--'} km/h`},
+    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'), value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
-    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(alba)},
-    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(tramonto)},
+    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba)},
+    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto)},
     {key:'energy',   title:'Energy',     icon:'⚡',  value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--')},
     {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`}
   ];
@@ -271,8 +163,6 @@ function renderCruscotto(m){
 
   renderIssuesMiniInDashboard();
 }
-
-/** Energy page */
 function renderEnergyPage(m){
   if (!m) return;
   $("#e2Current") && ($("#e2Current").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "-- kWh"));
@@ -282,63 +172,41 @@ function renderEnergyPage(m){
 }
 
 /* ===================== PEOPLE / CAMS / LOG ===================== */
-function normalizePeopleArray(r){
-  const base =
-    Array.isArray(r?.people)        ? r.people :
-    Array.isArray(r?.list)          ? r.list   :
-    Array.isArray(r?.rows)          ? r.rows   :
-    Array.isArray(r?.items)         ? r.items  :
-    Array.isArray(r?.people?.list)  ? r.people.list :
-    [];
-  // normalizza i campi (Nome/ONLINE ecc.)
-  return base.map(p=>{
-    const name = p.name || p.Nome || p.nome || p.N || "—";
-    const lastEvent = p.lastEvent || p.last_event || p.lastEvento || p.event || "";
-    // ONLINE può essere booleano o stringa "IN/OUT"
-    const online = (typeof p.online === "boolean")
-      ? p.online
-      : (String(p.online||p.ONLINE||"").toUpperCase()==="IN");
-    const ts = p.ts || p.tsText || p.last_life_raw || p.last_life_dt || null;
-    return { name, lastEvent, online, ts };
-  });
-}
-
 async function loadPeople(){
   try{
     const r = await jsonpModel("?people=1");
-    const arr = normalizePeopleArray(r);
+    const arr = r?.people || [];
     const ul = $("#peopleList"); if (!ul) return;
     ul.innerHTML = "";
     for (const p of arr){
-      const ts = p.ts ? fmtTs(p.ts) : "—";
+      const ts = p.ts ? fmtTs(p.ts) : (p.tsText || "—");
       const li = document.createElement("li");
       li.innerHTML = `
-        <div>${asText(p.name)}</div>
-        <div class="sub">${asText(p.lastEvent)||"—"} • ${ts}</div>
+        <div>${p.name}</div>
+        <div class="sub">${p.lastEvent||"—"} • ${ts}</div>
         <div><span class="badge ${p.online?'ok':'err'}">${p.online?'Online':'Offline'}</span></div>`;
       ul.appendChild(li);
     }
   }catch(_){}
 }
-
 async function loadCams(){
   try{
     const r = await jsonpModel("?cams=1");
-    const iOn = !!(r?.interne ?? r?.inside ?? r?.int);
-    const eOn = !!(r?.esterne ?? r?.outside ?? r?.ext);
+    const iOn = !!r?.interne;
+    const eOn = !!r?.esterne;
     const ci = $("#camInterne");
     const ce = $("#camEsterne");
     if (ci){ ci.textContent = iOn ? "ON" : "OFF"; ci.className = "badge "+(iOn?"ok":"err"); }
     if (ce){ ce.textContent = eOn ? "ON" : "OFF"; ce.className = "badge "+(eOn?"ok":"err"); }
   }catch(_){}
 }
-
 async function loadErrors(){
   try{
     const r = await jsonpModel("?logs=1");
     const ul = $("#logErrors"); if (!ul) return;
     ul.innerHTML = "";
 
+    // newest first + solo errori
     let arr = (r?.logs || []).slice().sort((a,b)=> new Date(b.ts||0) - new Date(a.ts||0));
     arr = arr.filter(e => (String(e.code||'').includes("ERR") || String(e.code||'').includes("ERROR")));
 
@@ -348,7 +216,7 @@ async function loadErrors(){
     }
     arr.forEach(e=>{
       const li = document.createElement("li");
-      li.innerHTML = `<div>${asText(e.code)}</div><div class="sub">${asText(e.desc)||""} • ${fmtTs(e.ts)}</div>`;
+      li.innerHTML = `<div>${e.code}</div><div class="sub">${e.desc||""} • ${fmtTs(e.ts)}</div>`;
       ul.appendChild(li);
     });
   }catch(_){}
@@ -404,11 +272,11 @@ function renderIssuesReport(logs){
     li.className = "issue-row";
     li.innerHTML = `
       <div>
-        <div class="issue-id">${asText(it.id)}</div>
-        <div class="sub">${it.desc ? asText(it.desc) : ''}</div>
+        <div class="issue-id">${it.id}</div>
+        <div class="sub">${it.desc ? it.desc : ''}</div>
       </div>
       <div class="issue-meta">
-        <span class="issue-code">${asText(it.code)}</span>
+        <span class="issue-code">${it.code}</span>
         <span class="${sevCls}">${isErr ? "Errore" : "Warn"}</span>
         <span class="sub">${fmtTs(it.ts)}</span>
       </div>`;
@@ -437,8 +305,8 @@ async function renderIssuesMiniInDashboard(){
       const sev = (it.code.includes("_ERR") ? "badge err" : "badge warn");
       const li  = document.createElement("li");
       li.className = "issue-row";
-      li.innerHTML = `<div class="issue-id">${asText(it.code)}</div>
-        <div class="issue-meta"><span>${asText(it.code)}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
+      li.innerHTML = `<div class="issue-id">${it.code}</div>
+        <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
       ul.appendChild(li);
     });
   }catch(_){}
@@ -498,14 +366,6 @@ async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
   }
 }
 window.refreshTestsPage = refreshTestsPage;
-// compat onclick legacy
-window.handleQuickDiag_ = (op)=> runQuick(op, {}, null, "diagStatus");
-window.handleGetVersion_ = async ()=>{
-  try{
-    const v = await api.version();
-    if (v?.ok && $("#backendVersion")) $("#backendVersion").textContent = v.version;
-  }catch(e){ toast("Versione backend: errore"); }
-};
 
 /* ===================== REFRESH CICLICO ===================== */
 async function refreshNow(){
@@ -521,54 +381,48 @@ async function refreshNow(){
 /* ===================== WIRING ===================== */
 function wire(){
   $$(".bottom-nav .nav-btn").forEach(b=>{
-    b.addEventListener("click", (ev) => { ev.preventDefault(); navTo(b.getAttribute("data-tab")); });
+    b.addEventListener("click", ()=>navTo(b.getAttribute("data-tab")));
   });
 
-  $("#peopleBar")?.addEventListener("click", () => navTo("people"));
+  $("#peopleBar")?.addEventListener("click", ()=>navTo("people"));
 
-  $("#btnOverride")?.addEventListener("click", async() =>{
-    // leggi lo stato attuale da get_flags, coercisci e fai toggle
-    const f1 = await apiFetch("get_flags");
-    const cur = boolish(f1?.override ?? f1?.flags?.override);
+  $("#btnOverride")?.addEventListener("click", async()=>{
+    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.override);
     await apiFetch("set_override",{value:String(!cur).toUpperCase()});
-    toast("Override: "+(!cur?"On":"Off"));
-    await refreshNow(); // <== refresh certo
+    toast("Override: "+(!cur?"On":"Off")); refreshNow();
   });
 
-  $("#btnVacanza")?.addEventListener("click", async() =>{
-    const f1 = await apiFetch("get_flags");
-    const cur = boolish(f1?.vacanza ?? f1?.flags?.vacanza);
+  $("#btnVacanza")?.addEventListener("click", async()=>{
+    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.vacanza);
     await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});
-    toast("Vacanza: "+(!cur?"On":"Off"));
-    await refreshNow();
+    toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
   });
 
-  // Piante
+  // Piante (feedback)
   $("#btnPiante")?.addEventListener("click", async()=>{
     const r=await apiFetch("piante");
     toast(r?.ok ? "Irrigazione: AVVIATA" : ("Irrigazione: ERRORE → "+(r?.error||"")));
-    await refreshNow();
   });
 
-  // Tapparelle
+  // Tapparelle (feedback + toggle label)
   $("#btnAlza")?.addEventListener("click", async()=>{
     const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
-    let res;
     if (goDown){
-      res = await apiFetch("abbassa_tutto");
+      const res = await apiFetch("abbassa_tutto");
       toast(res?.ok ? "Tapparelle: GIÙ" : ("Tapparelle: ERRORE → "+(res?.error||"")));
+      if (res?.ok) $("#lblAlza").textContent="Alza";
     }else{
-      res = await apiFetch("alza_tutto");
+      const res = await apiFetch("alza_tutto");
       toast(res?.ok ? "Tapparelle: SU" : ("Tapparelle: ERRORE → "+(res?.error||"")));
+      if (res?.ok) $("#lblAlza").textContent="Abbassa";
     }
-    await refreshNow();
   });
 
-  $("#btnOpenSettings")?.addEventListener("click", () => navTo("settings"));
-  $("#btnOpenTests")?.addEventListener("click",     () => navTo("tests"));
+  $("#btnOpenSettings")?.addEventListener("click", ()=>navTo("settings"));
+  $("#btnOpenTests")?.addEventListener("click",     ()=>navTo("tests"));
 
-  $("#btnBackToCrusc")?.addEventListener("click",   () => navTo("cruscotto"));
-  $("#btnRefreshReport")?.addEventListener("click", () => refreshTestsPage(true));
+  $("#btnBackToCrusc")?.addEventListener("click",   ()=>navTo("cruscotto"));
+  $("#btnRefreshReport")?.addEventListener("click", ()=>refreshTestsPage(true));
 
   $("#btnRunFullTestTop")?.addEventListener("click", async()=>{
     try{ const r = await apiFetch("diag_full_test");
@@ -576,7 +430,7 @@ function wire(){
     catch(e){ const el= $("#testSuiteStatusTop"); if (el) el.textContent = "Errore rete"; }
   });
 
-  // Quick test buttons (se usi id invece dell'onclick legacy)
+  // Quick test buttons
   const bind=(id,fn)=>{ const el=$("#"+id); if(el) el.onclick=fn; };
   bind("tQuickList",   ()=>runQuick("list",{},  "tQuickList","diagStatus"));
   bind("tKaOn",        ()=>runQuick("ka_on",{name:"marco",minutes:5}, "tKaOn","diagStatus"));
@@ -589,8 +443,8 @@ function wire(){
 
 /* ===================== DOM READY ===================== */
 document.addEventListener("DOMContentLoaded", async ()=>{
-  try{ wire(); }catch(e){ console.error("wire() error", e); }
-  try{ await refreshNow(); }catch(e){ console.error("refreshNow() error", e); }
+  wire();
+  await refreshNow();
   try{ await refreshTestsPage(true); }catch(_){}
   REFRESH_TIMER = setInterval(refreshNow, 60000);
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refreshNow(); });
@@ -629,9 +483,9 @@ async function runFullTestUI(name='marco'){
     const li = document.createElement('li');
     li.className = 'step ' + (s.skipped ? 'skip' : (s.ok ? 'ok' : 'err'));
     li.innerHTML = `
-      <div class="step-title">${asText(s.title)}</div>
-      <div class="step-meta">${asText(s.ms)} ms</div>
-      <div class="step-msg">${asText(s.msg)||''}</div>`;
+      <div class="step-title">${s.title}</div>
+      <div class="step-meta">${s.ms} ms</div>
+      <div class="step-msg">${s.msg||''}</div>`;
     ul.appendChild(li);
   });
 
@@ -642,48 +496,3 @@ async function runFullTestUI(name='marco'){
     top.style.color = res.ok ? "#7bd88f" : "#ff6b6b";
   }
 }
-
-/* ===================== FALLBACK API (minimo per far funzionare i bottoni) ===================== */
-(function ensureApi(){
-  if (typeof window.apiFetch !== "function"){
-    window.apiFetch = async function apiFetch(op, params={}){
-      const url = window.EXEC_URL || "";
-      if (!url) { toast("EXEC_URL mancante"); return { ok:false, error:"EXEC_URL mancante" }; }
-      const payload = { op, ...(params||{}) };
-      try{
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          mode: "cors",
-          credentials: "omit"
-        });
-        const ct = res.headers.get("content-type")||"";
-        const data = ct.includes("application/json") ? await res.json() : { ok: res.ok, text: await res.text() };
-        if (!res.ok) throw new Error(data?.error || res.statusText);
-        return data;
-      }catch(_e){
-        // fallback GET
-        const qs = new URLSearchParams();
-        qs.set("op", op);
-        Object.entries(params||{}).forEach(([k,v])=>{
-          qs.set(k, (v && typeof v === "object") ? JSON.stringify(v) : String(v));
-        });
-        try{
-          const r2 = await fetch(url + (url.includes("?")?"&":"?") + qs.toString(), { method:"GET" });
-          try{ return await r2.json(); }catch(_){ return { ok:r2.ok, status:r2.status }; }
-        }catch(e2){
-          toast(`Rete: ${e2.message}`); return { ok:false, error:e2.message };
-        }
-      }
-    };
-  }
-
-  window.api = window.api || {};
-  if (typeof window.api.version !== "function"){
-    window.api.version = async () => window.apiFetch("version");
-  }
-  if (typeof window.api.quick !== "function"){
-    window.api.quick = async (op, params={}) => window.apiFetch(op, params);
-  }
-})();
