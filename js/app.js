@@ -1,4 +1,4 @@
-"use strict";
+c"use strict";
 
 /* ===================== GLOBALI ===================== */
 let MODEL = null;
