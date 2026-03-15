@@ -33,8 +33,7 @@ function timeOnly(v){
   if (m) return m[4].padStart(2,"0")+":"+m[5];
   return "—";
 }
-
-/* === Formatter sicuro (evita [object Object]) dove serve === */
+/* Evita [object Object] dove serve */
 function asText(v){
   if (v === null || v === undefined) return "—";
   const t = typeof v;
@@ -42,30 +41,76 @@ function asText(v){
   if (t === "number")  return Number.isFinite(v) ? String(v) : "—";
   if (t === "boolean") return v ? "On" : "Off";
   if (Array.isArray(v)) return v.map(asText).join(", ");
-  const keys = ["label","name","title","value","id","text","code"];
   if (t === "object"){
+    const keys = ["label","name","title","value","id","text","code"];
     for (const k of keys){ if (k in v && v[k] != null) return asText(v[k]); }
     try { return JSON.stringify(v); } catch { return String(v); }
   }
   return String(v);
 }
 
-/* === Normalizza STATO (per label e logica) === */
-function stateCode(s){
-  if (!s) return "";
-  if (typeof s === "string") return s.toUpperCase();
-  if (typeof s === "object"){
-    const raw = s.id || s.code || s.state || s.mode || s.day_night || s.value || s.name || "";
-    return String(raw).toUpperCase();
-  }
-  return String(s).toUpperCase();
+/* ===================== GETTER ROBUSTI (STATO / FLAGS / METEO / ALBA-TRAMONTO) ===================== */
+function toTitle(s){
+  return String(s||"")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
 }
-function stateLabel(s){
-  if (!s) return "—";
-  if (typeof s === "object" && (s.label || s.name)) return String(s.label || s.name);
-  const code = stateCode(s);
-  if (!code) return "—";
-  return code.replace(/_/g," ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+
+/** Stato: priorità a Config!B1 (STATO), poi state.id|code|state|mode|value, infine day_night */
+function getStateFromModel(m){
+  if (!m) return { code:"", label:"—", source:null };
+  const cfg = m.config || m.Config || {};
+  let code = cfg.STATO || cfg.stato || m.STATO || m.stato;
+  if (code) return { code:String(code).toUpperCase(), label: toTitle(code), source:"config" };
+
+  const s = m.state || {};
+  code = s.id || s.code || s.state || s.mode || s.value;
+  if (code) return { code:String(code).toUpperCase(), label: toTitle(code), source:"state" };
+
+  code = s.day_night || m.day_night;
+  if (code){
+    const up = String(code).toUpperCase();
+    const label = (up==="GIORNO" ? "Giorno" : (up==="NOTTE" ? "Notte" : toTitle(up)));
+    return { code: up, label, source:"day_night" };
+  }
+  return { code:"", label:"—", source:null };
+}
+
+/** Flags override/vacanza: supporta backend diversi */
+function boolish(v){
+  if (v === true) return true;
+  if (v === false) return false;
+  if (v == null) return false;
+  const s = String(v).trim().toLowerCase();
+  return ["true","1","on","yes","y","si","s"].includes(s);
+}
+function getFlags(m){
+  const f = (m && (m.flags || m.flag || m.Flags)) || {};
+  const cfg = m?.config || m?.Config || {};
+  return {
+    override: boolish( f.override ?? cfg.OVERRIDE ?? cfg.override ),
+    vacanza:  boolish( f.vacanza  ?? cfg.VACANZA  ?? cfg.vacanza  ),
+  };
+}
+
+/** Meteo fallback su Config (TEMPC/WINDKMH) */
+function getWeather(m){
+  const w = m?.weather || {};
+  const cfg = m?.config || m?.Config || {};
+  const tempC   = (w.tempC   != null) ? w.tempC   : (cfg.TEMPC   != null ? Number(cfg.TEMPC)   : null);
+  const windKmh = (w.windKmh != null) ? w.windKmh : (cfg.WINDKMH != null ? Number(cfg.WINDKMH) : null);
+  const iconEmoji = w.iconEmoji || "🌤";
+  return { tempC, windKmh, iconEmoji };
+}
+
+/** Alba/Tramonto: state.sunrise/sunset o next.alba/tramonto */
+function getSunTimes(m){
+  const n  = m?.next || {};
+  const st = m?.state || {};
+  const alba     = n.alba     || st.sunrise || st.nextSunrise || null;
+  const tramonto = n.tramonto || st.sunset  || st.nextSunset  || null;
+  return { alba, tramonto };
 }
 
 /* ===================== MODEL (JSONP) ===================== */
@@ -106,7 +151,7 @@ async function loadModelWithRetry(){
 }
 
 /* ===================== NAVIGAZIONE ===================== */
-// Delegation GLOBALE: la bottom-nav funziona anche se wire() non gira
+// Delegation GLOBALE per sicurezza (anche se wire() non parte)
 document.addEventListener("click", (ev)=>{
   const btn = ev.target.closest?.('.bottom-nav .nav-btn[data-tab], [data-tab].nav-btn');
   if (!btn) return;
@@ -115,14 +160,13 @@ document.addEventListener("click", (ev)=>{
   if (tab) navTo(tab);
 });
 
-function setBadgeState(st){
+function setBadgeState(m){
   const el = $("#stateBadge"); if(!el) return;
-  const code  = stateCode(st);
-  const label = stateLabel(st);
+  const st = getStateFromModel(m);
   el.className = "state-badge";
-  if (!code){ el.textContent = "—"; return; }
-  el.classList.add(code.startsWith("COMFY") ? "ok" : "alert");
-  el.textContent = label;
+  if (!st.code){ el.textContent = "—"; return; }
+  el.classList.add(st.code.startsWith("COMFY") ? "ok" : "alert");
+  el.textContent = st.label;
 }
 function navTo(tab){
   ACTIVE_TAB = tab;
@@ -150,46 +194,66 @@ window.navTo = navTo;
 /* ===================== HOME/CRUSCOTTO/ENERGY ===================== */
 function renderHome(m){
   if (!m) return;
-  setBadgeState(m.state);
 
+  // Stato badge
+  setBadgeState(m);
+
+  // Meteo
+  const weather = getWeather(m);
   const wp = $("#weatherPill");
-  if (!m.weather || (m.weather.tempC==null && m.weather.windKmh==null)){
+  if (weather.tempC==null && weather.windKmh==null){
     wp?.classList?.add("is-hidden");
   }else{
     wp?.classList?.remove("is-hidden");
-    $("#weatherIcon").textContent = asText(m.weather.iconEmoji || "🌤");
-    $("#weatherTemp").textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
-    $("#weatherWind").textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
+    $("#weatherIcon").textContent = weather.iconEmoji;
+    $("#weatherTemp").textContent = (weather.tempC!=null ? Math.round(weather.tempC)+"°" : "--°");
+    $("#weatherWind").textContent = (weather.windKmh!=null ? Math.round(weather.windKmh)+" km/h" : "-- km/h");
   }
 
+  // Energy
   $("#energyValue").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
 
-  $("#lblOverride").textContent = m.override ? "On" : "Off";
-  $("#lblVacanza").textContent  = m.vacanza ? "On" : "Off";
-  $("#btnOverride").classList.toggle("on", !!m.override);
-  $("#btnVacanza").classList.toggle("on", !!m.vacanza);
+  // Flags override/vacanza (da qualsiasi fonte)
+  const flags = getFlags(m);
+  $("#lblOverride").textContent = flags.override ? "On" : "Off";
+  $("#lblVacanza").textContent  = flags.vacanza  ? "On" : "Off";
+  $("#btnOverride").classList.toggle("on", !!flags.override);
+  $("#btnVacanza").classList.toggle("on", !!flags.vacanza);
 
-  const st = stateCode(m.state);
+  // Tapparelle: etichetta dipende dallo stato
+  const st = getStateFromModel(m).code;
   $("#lblAlza").textContent = st==="COMFY_DAY" ? "Abbassa" : "Alza";
 
-  const ppl = m.people || [];
+  // Persone summary (se non c'è nel MODEL provo a leggerle al volo)
+  const ppl = Array.isArray(m.people) ? m.people : [];
   $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
+  if (!ppl.length){
+    // fallback async: aggiorna il pill appena arriva
+    jsonpModel("?people=1").then(r=>{
+      const arr = normalizePeopleArray(r);
+      $("#peopleSummary").textContent = `${arr.filter(p=>p.online).length} online / ${arr.length} totali`;
+    }).catch(()=>{});
+  }
 }
 function camsText(m){
-  const s = stateCode(m?.state);
+  const s = getStateFromModel(m).code;
   if (s.startsWith("SECURITY")) return "ON · ON";
   if (s==="COMFY_NIGHT")       return "OFF · ON";
   return "OFF · OFF";
 }
 function renderCruscotto(m){
   const el = $("#cruscottoGrid"); if (!el || !m) return;
+
+  const { alba, tramonto } = getSunTimes(m);
+  const weather = getWeather(m);
+
   const tiles = [
-    {key:'state',    title:'Stato',      icon:'🟢', value: stateLabel(m.state)},
+    {key:'state',    title:'Stato',      icon:'🟢', value: getStateFromModel(m).label},
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
-    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'), value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
+    {key:'meteo',    title:'Meteo',      icon:(weather.iconEmoji||'🌤'), value:`${weather.tempC!=null?Math.round(weather.tempC):'--'}° · ${weather.windKmh!=null?Math.round(weather.windKmh):'--'} km/h`},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
-    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba)},
-    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto)},
+    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(alba)},
+    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(tramonto)},
     {key:'energy',   title:'Energy',     icon:'⚡',  value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--')},
     {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`}
   ];
@@ -207,6 +271,8 @@ function renderCruscotto(m){
 
   renderIssuesMiniInDashboard();
 }
+
+/** Energy page */
 function renderEnergyPage(m){
   if (!m) return;
   $("#e2Current") && ($("#e2Current").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "-- kWh"));
@@ -216,38 +282,57 @@ function renderEnergyPage(m){
 }
 
 /* ===================== PEOPLE / CAMS / LOG ===================== */
+function normalizePeopleArray(r){
+  const base =
+    Array.isArray(r?.people)        ? r.people :
+    Array.isArray(r?.list)          ? r.list   :
+    Array.isArray(r?.rows)          ? r.rows   :
+    Array.isArray(r?.items)         ? r.items  :
+    Array.isArray(r?.people?.list)  ? r.people.list :
+    [];
+  // normalizza i campi (Nome/ONLINE ecc.)
+  return base.map(p=>{
+    const name = p.name || p.Nome || p.nome || p.N || "—";
+    const lastEvent = p.lastEvent || p.last_event || p.lastEvento || p.event || "";
+    // ONLINE può essere booleano o stringa "IN/OUT"
+    const online = (typeof p.online === "boolean")
+      ? p.online
+      : (String(p.online||p.ONLINE||"").toUpperCase()==="IN");
+    const ts = p.ts || p.tsText || p.last_life_raw || p.last_life_dt || null;
+    return { name, lastEvent, online, ts };
+  });
+}
+
 async function loadPeople(){
   try{
     const r = await jsonpModel("?people=1");
-    const arr =
-      Array.isArray(r?.people)        ? r.people :
-      Array.isArray(r?.list)          ? r.list   :
-      Array.isArray(r?.people?.list)  ? r.people.list :
-      [];
+    const arr = normalizePeopleArray(r);
     const ul = $("#peopleList"); if (!ul) return;
     ul.innerHTML = "";
     for (const p of arr){
-      const ts = p.ts ? fmtTs(p.ts) : (p.tsText || "—");
+      const ts = p.ts ? fmtTs(p.ts) : "—";
       const li = document.createElement("li");
       li.innerHTML = `
-        <div>${(p && (p.name || p.label)) ? (p.name || p.label) : "—"}</div>
-        <div class="sub">${(p && (p.lastEvent || p.event || ""))} • ${ts}</div>
-        <div><span class="badge ${p?.online?'ok':'err'}">${p?.online?'Online':'Offline'}</span></div>`;
+        <div>${asText(p.name)}</div>
+        <div class="sub">${asText(p.lastEvent)||"—"} • ${ts}</div>
+        <div><span class="badge ${p.online?'ok':'err'}">${p.online?'Online':'Offline'}</span></div>`;
       ul.appendChild(li);
     }
   }catch(_){}
 }
+
 async function loadCams(){
   try{
     const r = await jsonpModel("?cams=1");
-    const iOn = !!r?.interne;
-    const eOn = !!r?.esterne;
+    const iOn = !!(r?.interne ?? r?.inside ?? r?.int);
+    const eOn = !!(r?.esterne ?? r?.outside ?? r?.ext);
     const ci = $("#camInterne");
     const ce = $("#camEsterne");
     if (ci){ ci.textContent = iOn ? "ON" : "OFF"; ci.className = "badge "+(iOn?"ok":"err"); }
     if (ce){ ce.textContent = eOn ? "ON" : "OFF"; ce.className = "badge "+(eOn?"ok":"err"); }
   }catch(_){}
 }
+
 async function loadErrors(){
   try{
     const r = await jsonpModel("?logs=1");
@@ -413,12 +498,9 @@ async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
   }
 }
 window.refreshTestsPage = refreshTestsPage;
-
-/* --- Compat globale per i pulsanti esistenti nella pagina Test --- */
-window.handleQuickDiag_ = function(op){
-  return runQuick(op, {}, null, "diagStatus");
-};
-window.handleGetVersion_ = async function(){
+// compat onclick legacy
+window.handleQuickDiag_ = (op)=> runQuick(op, {}, null, "diagStatus");
+window.handleGetVersion_ = async ()=>{
   try{
     const v = await api.version();
     if (v?.ok && $("#backendVersion")) $("#backendVersion").textContent = v.version;
@@ -438,7 +520,6 @@ async function refreshNow(){
 
 /* ===================== WIRING ===================== */
 function wire(){
-  // (teniamo anche il binding diretto, oltre alla delegation globale)
   $$(".bottom-nav .nav-btn").forEach(b=>{
     b.addEventListener("click", (ev) => { ev.preventDefault(); navTo(b.getAttribute("data-tab")); });
   });
@@ -446,33 +527,41 @@ function wire(){
   $("#peopleBar")?.addEventListener("click", () => navTo("people"));
 
   $("#btnOverride")?.addEventListener("click", async() =>{
-    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.override);
+    // leggi lo stato attuale da get_flags, coercisci e fai toggle
+    const f1 = await apiFetch("get_flags");
+    const cur = boolish(f1?.override ?? f1?.flags?.override);
     await apiFetch("set_override",{value:String(!cur).toUpperCase()});
-    toast("Override: "+(!cur?"On":"Off")); refreshNow();
+    toast("Override: "+(!cur?"On":"Off"));
+    await refreshNow(); // <== refresh certo
   });
 
   $("#btnVacanza")?.addEventListener("click", async() =>{
-    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.vacanza);
+    const f1 = await apiFetch("get_flags");
+    const cur = boolish(f1?.vacanza ?? f1?.flags?.vacanza);
     await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});
-    toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
+    toast("Vacanza: "+(!cur?"On":"Off"));
+    await refreshNow();
   });
 
+  // Piante
   $("#btnPiante")?.addEventListener("click", async()=>{
     const r=await apiFetch("piante");
     toast(r?.ok ? "Irrigazione: AVVIATA" : ("Irrigazione: ERRORE → "+(r?.error||"")));
+    await refreshNow();
   });
 
+  // Tapparelle
   $("#btnAlza")?.addEventListener("click", async()=>{
     const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
+    let res;
     if (goDown){
-      const res = await apiFetch("abbassa_tutto");
+      res = await apiFetch("abbassa_tutto");
       toast(res?.ok ? "Tapparelle: GIÙ" : ("Tapparelle: ERRORE → "+(res?.error||"")));
-      if (res?.ok) $("#lblAlza").textContent="Alza";
     }else{
-      const res = await apiFetch("alza_tutto");
+      res = await apiFetch("alza_tutto");
       toast(res?.ok ? "Tapparelle: SU" : ("Tapparelle: ERRORE → "+(res?.error||"")));
-      if (res?.ok) $("#lblAlza").textContent="Abbassa";
     }
+    await refreshNow();
   });
 
   $("#btnOpenSettings")?.addEventListener("click", () => navTo("settings"));
@@ -500,12 +589,8 @@ function wire(){
 
 /* ===================== DOM READY ===================== */
 document.addEventListener("DOMContentLoaded", async ()=>{
-  try{
-    wire();
-  }catch(e){ console.error("wire() error", e); }
-  try{
-    await refreshNow();
-  }catch(e){ console.error("refreshNow() error", e); }
+  try{ wire(); }catch(e){ console.error("wire() error", e); }
+  try{ await refreshNow(); }catch(e){ console.error("refreshNow() error", e); }
   try{ await refreshTestsPage(true); }catch(_){}
   REFRESH_TIMER = setInterval(refreshNow, 60000);
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refreshNow(); });
@@ -514,7 +599,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
 });
 
 async function runFullTestUI(name='marco'){
-  const card = document.querySelector('#pageTests .tests-grid .card');
+  const card = document.querySelector('#pageTests .tests-grid .card'); // prima card
   let host = document.getElementById('fullTestSteps');
   if (!host){
     host = document.createElement('div');
@@ -527,8 +612,10 @@ async function runFullTestUI(name='marco'){
   const ul = host.querySelector('.step-list'); if (!ul) return;
   ul.innerHTML = '<li class="step">Esecuzione…</li>';
 
+  // avvia
   const res = await apiFetch('diag_full_test', { name });
 
+  // render
   ul.innerHTML = '';
   if (!res || !res.steps){
     const li = document.createElement('li');
@@ -548,6 +635,7 @@ async function runFullTestUI(name='marco'){
     ul.appendChild(li);
   });
 
+  // badge stato in alto
   const top = document.getElementById("testSuiteStatusTop");
   if (top){
     top.textContent = res.ok ? "OK ✓" : "ERR ×";
