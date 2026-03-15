@@ -34,7 +34,7 @@ function timeOnly(v){
   return "—";
 }
 
-/* === Formatter sicuro per evitare [object Object] dove serve === */
+/* === Formatter sicuro (evita [object Object]) dove serve === */
 function asText(v){
   if (v === null || v === undefined) return "—";
   const t = typeof v;
@@ -50,7 +50,7 @@ function asText(v){
   return String(v);
 }
 
-/* === Normalizza lo STATO (per label e logica) === */
+/* === Normalizza STATO (per label e logica) === */
 function stateCode(s){
   if (!s) return "";
   if (typeof s === "string") return s.toUpperCase();
@@ -106,6 +106,15 @@ async function loadModelWithRetry(){
 }
 
 /* ===================== NAVIGAZIONE ===================== */
+// Delegation GLOBALE: la bottom-nav funziona anche se wire() non gira
+document.addEventListener("click", (ev)=>{
+  const btn = ev.target.closest?.('.bottom-nav .nav-btn[data-tab], [data-tab].nav-btn');
+  if (!btn) return;
+  ev.preventDefault();
+  const tab = btn.getAttribute("data-tab");
+  if (tab) navTo(tab);
+});
+
 function setBadgeState(st){
   const el = $("#stateBadge"); if(!el) return;
   const code  = stateCode(st);
@@ -429,8 +438,9 @@ async function refreshNow(){
 
 /* ===================== WIRING ===================== */
 function wire(){
+  // (teniamo anche il binding diretto, oltre alla delegation globale)
   $$(".bottom-nav .nav-btn").forEach(b=>{
-    b.addEventListener("click", () => navTo(b.getAttribute("data-tab")));
+    b.addEventListener("click", (ev) => { ev.preventDefault(); navTo(b.getAttribute("data-tab")); });
   });
 
   $("#peopleBar")?.addEventListener("click", () => navTo("people"));
@@ -447,13 +457,11 @@ function wire(){
     toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
   });
 
-  // Piante (feedback)
   $("#btnPiante")?.addEventListener("click", async()=>{
     const r=await apiFetch("piante");
     toast(r?.ok ? "Irrigazione: AVVIATA" : ("Irrigazione: ERRORE → "+(r?.error||"")));
   });
 
-  // Tapparelle (feedback + toggle label)
   $("#btnAlza")?.addEventListener("click", async()=>{
     const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
     if (goDown){
@@ -492,8 +500,12 @@ function wire(){
 
 /* ===================== DOM READY ===================== */
 document.addEventListener("DOMContentLoaded", async ()=>{
-  wire();
-  await refreshNow();
+  try{
+    wire();
+  }catch(e){ console.error("wire() error", e); }
+  try{
+    await refreshNow();
+  }catch(e){ console.error("refreshNow() error", e); }
   try{ await refreshTestsPage(true); }catch(_){}
   REFRESH_TIMER = setInterval(refreshNow, 60000);
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refreshNow(); });
@@ -502,7 +514,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
 });
 
 async function runFullTestUI(name='marco'){
-  const card = document.querySelector('#pageTests .tests-grid .card'); // prima card
+  const card = document.querySelector('#pageTests .tests-grid .card');
   let host = document.getElementById('fullTestSteps');
   if (!host){
     host = document.createElement('div');
@@ -515,10 +527,8 @@ async function runFullTestUI(name='marco'){
   const ul = host.querySelector('.step-list'); if (!ul) return;
   ul.innerHTML = '<li class="step">Esecuzione…</li>';
 
-  // avvia
   const res = await apiFetch('diag_full_test', { name });
 
-  // render
   ul.innerHTML = '';
   if (!res || !res.steps){
     const li = document.createElement('li');
@@ -550,9 +560,8 @@ async function runFullTestUI(name='marco'){
   if (typeof window.apiFetch !== "function"){
     window.apiFetch = async function apiFetch(op, params={}){
       const url = window.EXEC_URL || "";
-      if (!url) throw new Error("EXEC_URL mancante");
+      if (!url) { toast("EXEC_URL mancante"); return { ok:false, error:"EXEC_URL mancante" }; }
       const payload = { op, ...(params||{}) };
-      // 1) tentativo POST JSON
       try{
         const res = await fetch(url, {
           method: "POST",
@@ -566,4 +575,27 @@ async function runFullTestUI(name='marco'){
         if (!res.ok) throw new Error(data?.error || res.statusText);
         return data;
       }catch(_e){
-        // 2) fallback GET
+        // fallback GET
+        const qs = new URLSearchParams();
+        qs.set("op", op);
+        Object.entries(params||{}).forEach(([k,v])=>{
+          qs.set(k, (v && typeof v === "object") ? JSON.stringify(v) : String(v));
+        });
+        try{
+          const r2 = await fetch(url + (url.includes("?")?"&":"?") + qs.toString(), { method:"GET" });
+          try{ return await r2.json(); }catch(_){ return { ok:r2.ok, status:r2.status }; }
+        }catch(e2){
+          toast(`Rete: ${e2.message}`); return { ok:false, error:e2.message };
+        }
+      }
+    };
+  }
+
+  window.api = window.api || {};
+  if (typeof window.api.version !== "function"){
+    window.api.version = async () => window.apiFetch("version");
+  }
+  if (typeof window.api.quick !== "function"){
+    window.api.quick = async (op, params={}) => window.apiFetch(op, params);
+  }
+})();
