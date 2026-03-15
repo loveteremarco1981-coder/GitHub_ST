@@ -34,6 +34,78 @@ function timeOnly(v){
   return "—";
 }
 
+/* ===== Utilità generiche ===== */
+function asText(v){
+  if (v === null || v === undefined) return "—";
+  const t = typeof v;
+  if (t === "string")  return v || "—";
+  if (t === "number")  return Number.isFinite(v) ? String(v) : "—";
+  if (t === "boolean") return v ? "On" : "Off";
+  if (Array.isArray(v)) return v.map(asText).join(", ");
+  if (t === "object"){
+    const keys = ["label","name","title","value","id","text","code"];
+    for (const k of keys){ if (k in v && v[k] != null) return asText(v[k]); }
+    try { return JSON.stringify(v); } catch { return String(v); }
+  }
+  return String(v);
+}
+function boolish(v){
+  if (v === true) return true;
+  if (v === false) return false;
+  if (v == null) return false;
+  const s = String(v).trim().toLowerCase();
+  return ["true","1","on","yes","y","si","s"].includes(s);
+}
+function toTitle(s){
+  return String(s||"")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/* ===== Stato / Meteo / Alba‑Tramonto / Flags ===== */
+function getStateFromModel(m){
+  if (!m) return { code:"", label:"—", source:null };
+  const cfg = m.config || m.Config || {};
+  let code = cfg.STATO || cfg.stato || m.STATO || m.stato;
+  if (code) return { code:String(code).toUpperCase(), label: toTitle(code), source:"config" };
+
+  const s = m.state || {};
+  code = s.id || s.code || s.state || s.mode || s.value;
+  if (code) return { code:String(code).toUpperCase(), label: toTitle(code), source:"state" };
+
+  code = s.day_night || m.day_night;
+  if (code){
+    const up = String(code).toUpperCase();
+    const label = (up==="GIORNO" ? "Giorno" : (up==="NOTTE" ? "Notte" : toTitle(up)));
+    return { code: up, label, source:"day_night" };
+  }
+  return { code:"", label:"—", source:null };
+}
+function getFlags(m){
+  const f = (m && (m.flags || m.flag || m.Flags)) || {};
+  const cfg = m?.config || m?.Config || {};
+  return {
+    override: boolish( f.override ?? cfg.OVERRIDE ?? cfg.override ),
+    vacanza:  boolish( f.vacanza  ?? cfg.VACANZA  ?? cfg.vacanza  ),
+  };
+}
+function getWeather(m){
+  const w = m?.weather || {};
+  const cfg = m?.config || m?.Config || {};
+  const tempC   = (w.tempC   != null) ? w.tempC   : (cfg.TEMPC   != null ? Number(cfg.TEMPC)   : null);
+  const windKmh = (w.windKmh != null) ? w.windKmh : (cfg.WINDKMH != null ? Number(cfg.WINDKMH) : null);
+  const iconEmoji = w.iconEmoji || "🌤";
+  return { tempC, windKmh, iconEmoji };
+}
+function getSunTimes(m){
+  const n  = m?.next || {};
+  const st = m?.state || {};
+  const alba     = n.alba     || st.sunrise || st.nextSunrise || null;
+  const tramonto = n.tramonto || st.sunset  || st.nextSunset  || null;
+  return { alba, tramonto };
+}
+
 /* ===================== MODEL (JSONP) ===================== */
 function jsonpModel(qs=""){
   const base = window.EXEC_URL;
@@ -72,13 +144,22 @@ async function loadModelWithRetry(){
 }
 
 /* ===================== NAVIGAZIONE ===================== */
-function setBadgeState(st){
+// Delegation di sicurezza (se un errore blocca wire(), la nav funziona comunque)
+document.addEventListener("click", (ev)=>{
+  const btn = ev.target.closest?.('.bottom-nav .nav-btn[data-tab], [data-tab].nav-btn');
+  if (!btn) return;
+  ev.preventDefault();
+  const tab = btn.getAttribute("data-tab");
+  if (tab) navTo(tab);
+});
+
+function setBadgeStateFromModel(m){
   const el = $("#stateBadge"); if(!el) return;
+  const st = getStateFromModel(m);
   el.className = "state-badge";
-  if (!st){ el.textContent = "—"; return; }
-  const s = String(st).toUpperCase();
-  el.classList.add(s.startsWith("COMFY") ? "ok" : "alert");
-  el.textContent = s.replace("_"," ");
+  if (!st.code){ el.textContent = "—"; return; }
+  el.classList.add(st.code.startsWith("COMFY") ? "ok" : "alert");
+  el.textContent = st.label;
 }
 function navTo(tab){
   ACTIVE_TAB = tab;
@@ -106,46 +187,62 @@ window.navTo = navTo;
 /* ===================== HOME/CRUSCOTTO/ENERGY ===================== */
 function renderHome(m){
   if (!m) return;
-  setBadgeState(m.state);
+  setBadgeStateFromModel(m);
 
+  // Meteo
+  const weather = getWeather(m);
   const wp = $("#weatherPill");
-  if (!m.weather || (m.weather.tempC==null && m.weather.windKmh==null)){
+  if (weather.tempC==null && weather.windKmh==null){
     wp?.classList?.add("is-hidden");
   }else{
     wp?.classList?.remove("is-hidden");
-    $("#weatherIcon").textContent = m.weather.iconEmoji || "🌤";
-    $("#weatherTemp").textContent = (m.weather.tempC!=null ? Math.round(m.weather.tempC)+"°" : "--°");
-    $("#weatherWind").textContent = (m.weather.windKmh!=null ? Math.round(m.weather.windKmh)+" km/h" : "-- km/h");
+    $("#weatherIcon").textContent = weather.iconEmoji;
+    $("#weatherTemp").textContent = (weather.tempC!=null ? Math.round(weather.tempC)+"°" : "--°");
+    $("#weatherWind").textContent = (weather.windKmh!=null ? Math.round(weather.windKmh)+" km/h" : "-- km/h");
   }
 
+  // Energy
   $("#energyValue").textContent = (m.energy?.kwh!=null ? `${m.energy.kwh} kWh` : "— kWh");
 
-  $("#lblOverride").textContent = m.override ? "On" : "Off";
-  $("#lblVacanza").textContent  = m.vacanza ? "On" : "Off";
-  $("#btnOverride").classList.toggle("on", !!m.override);
-  $("#btnVacanza").classList.toggle("on", !!m.vacanza);
+  // Flags override/vacanza
+  const flags = getFlags(m);
+  $("#lblOverride").textContent = flags.override ? "On" : "Off";
+  $("#lblVacanza").textContent  = flags.vacanza  ? "On" : "Off";
+  $("#btnOverride").classList.toggle("on", !!flags.override);
+  $("#btnVacanza").classList.toggle("on", !!flags.vacanza);
 
-  const st = String(m.state||"").toUpperCase();
+  // Tapparelle label
+  const st = getStateFromModel(m).code;
   $("#lblAlza").textContent = st==="COMFY_DAY" ? "Abbassa" : "Alza";
 
-  const ppl = m.people || [];
+  // Persone summary
+  const ppl = Array.isArray(m.people) ? m.people : [];
   $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
+  if (!ppl.length){
+    jsonpModel("?people=1").then(r=>{
+      const arr = normalizePeopleArray(r);
+      $("#peopleSummary").textContent = `${arr.filter(p=>p.online).length} online / ${arr.length} totali`;
+    }).catch(()=>{});
+  }
 }
 function camsText(m){
-  const s = String(m?.state||"").toUpperCase();
+  const s = getStateFromModel(m).code;
   if (s.startsWith("SECURITY")) return "ON · ON";
   if (s==="COMFY_NIGHT")       return "OFF · ON";
   return "OFF · OFF";
 }
 function renderCruscotto(m){
   const el = $("#cruscottoGrid"); if (!el || !m) return;
+  const { alba, tramonto } = getSunTimes(m);
+  const weather = getWeather(m);
+
   const tiles = [
-    {key:'state',    title:'Stato',      icon:'🟢', value:(m.state||'—')},
+    {key:'state',    title:'Stato',      icon:'🟢', value:getStateFromModel(m).label},
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
-    {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'), value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
+    {key:'meteo',    title:'Meteo',      icon:(weather.iconEmoji||'🌤'), value:`${weather.tempC!=null?Math.round(weather.tempC):'--'}° · ${weather.windKmh!=null?Math.round(weather.windKmh):'--'} km/h`},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
-    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(m.next?.alba)},
-    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(m.next?.tramonto)},
+    {key:'alba',     title:'Alba',       icon:'🌅', value:timeOnly(alba)},
+    {key:'tramonto', title:'Tramonto',   icon:'🌇', value:timeOnly(tramonto)},
     {key:'energy',   title:'Energy',     icon:'⚡',  value:(m.energy?.kwh!=null?`${m.energy.kwh} kWh`:'--')},
     {key:'online',   title:'Online',     icon:'👥', value:`${(m.people||[]).filter(p=>p.online).length} / ${(m.people||[]).length}`}
   ];
@@ -172,18 +269,36 @@ function renderEnergyPage(m){
 }
 
 /* ===================== PEOPLE / CAMS / LOG ===================== */
+function normalizePeopleArray(r){
+  const base =
+    Array.isArray(r?.people)        ? r.people :
+    Array.isArray(r?.list)          ? r.list   :
+    Array.isArray(r?.rows)          ? r.rows   :
+    Array.isArray(r?.items)         ? r.items  :
+    Array.isArray(r?.people?.list)  ? r.people.list :
+    [];
+  return base.map(p=>{
+    const name = p.name || p.Nome || p.nome || p.N || "—";
+    const lastEvent = p.lastEvent || p.last_event || p.lastEvento || p.event || "";
+    const online = (typeof p.online === "boolean")
+      ? p.online
+      : (String(p.online||p.ONLINE||"").toUpperCase()==="IN");
+    const ts = p.ts || p.tsText || p.last_life_raw || p.last_life_dt || null;
+    return { name, lastEvent, online, ts };
+  });
+}
 async function loadPeople(){
   try{
     const r = await jsonpModel("?people=1");
-    const arr = r?.people || [];
+    const arr = normalizePeopleArray(r);
     const ul = $("#peopleList"); if (!ul) return;
     ul.innerHTML = "";
     for (const p of arr){
-      const ts = p.ts ? fmtTs(p.ts) : (p.tsText || "—");
+      const ts = p.ts ? fmtTs(p.ts) : "—";
       const li = document.createElement("li");
       li.innerHTML = `
-        <div>${p.name}</div>
-        <div class="sub">${p.lastEvent||"—"} • ${ts}</div>
+        <div>${asText(p.name)}</div>
+        <div class="sub">${asText(p.lastEvent)||"—"} • ${ts}</div>
         <div><span class="badge ${p.online?'ok':'err'}">${p.online?'Online':'Offline'}</span></div>`;
       ul.appendChild(li);
     }
@@ -192,8 +307,8 @@ async function loadPeople(){
 async function loadCams(){
   try{
     const r = await jsonpModel("?cams=1");
-    const iOn = !!r?.interne;
-    const eOn = !!r?.esterne;
+    const iOn = !!(r?.interne ?? r?.inside ?? r?.int);
+    const eOn = !!(r?.esterne ?? r?.outside ?? r?.ext);
     const ci = $("#camInterne");
     const ce = $("#camEsterne");
     if (ci){ ci.textContent = iOn ? "ON" : "OFF"; ci.className = "badge "+(iOn?"ok":"err"); }
@@ -206,7 +321,6 @@ async function loadErrors(){
     const ul = $("#logErrors"); if (!ul) return;
     ul.innerHTML = "";
 
-    // newest first + solo errori
     let arr = (r?.logs || []).slice().sort((a,b)=> new Date(b.ts||0) - new Date(a.ts||0));
     arr = arr.filter(e => (String(e.code||'').includes("ERR") || String(e.code||'').includes("ERROR")));
 
@@ -216,7 +330,7 @@ async function loadErrors(){
     }
     arr.forEach(e=>{
       const li = document.createElement("li");
-      li.innerHTML = `<div>${e.code}</div><div class="sub">${e.desc||""} • ${fmtTs(e.ts)}</div>`;
+      li.innerHTML = `<div>${asText(e.code)}</div><div class="sub">${asText(e.desc)||""} • ${fmtTs(e.ts)}</div>`;
       ul.appendChild(li);
     });
   }catch(_){}
@@ -272,11 +386,11 @@ function renderIssuesReport(logs){
     li.className = "issue-row";
     li.innerHTML = `
       <div>
-        <div class="issue-id">${it.id}</div>
-        <div class="sub">${it.desc ? it.desc : ''}</div>
+        <div class="issue-id">${asText(it.id)}</div>
+        <div class="sub">${it.desc ? asText(it.desc) : ''}</div>
       </div>
       <div class="issue-meta">
-        <span class="issue-code">${it.code}</span>
+        <span class="issue-code">${asText(it.code)}</span>
         <span class="${sevCls}">${isErr ? "Errore" : "Warn"}</span>
         <span class="sub">${fmtTs(it.ts)}</span>
       </div>`;
@@ -305,8 +419,8 @@ async function renderIssuesMiniInDashboard(){
       const sev = (it.code.includes("_ERR") ? "badge err" : "badge warn");
       const li  = document.createElement("li");
       li.className = "issue-row";
-      li.innerHTML = `<div class="issue-id">${it.code}</div>
-        <div class="issue-meta"><span>${it.code}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
+      li.innerHTML = `<div class="issue-id">${asText(it.code)}</div>
+        <div class="issue-meta"><span>${asText(it.code)}</span><span class="${sev}">${sev.includes("err")?"Errore":"Warn"}</span><span class="sub">${fmtTs(it.ts)}</span></div>`;
       ul.appendChild(li);
     });
   }catch(_){}
@@ -367,6 +481,15 @@ async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
 }
 window.refreshTestsPage = refreshTestsPage;
 
+/* Compat onclick legacy (se la pagina richiama handleQuickDiag_) */
+window.handleQuickDiag_ = (op)=> runQuick(op, {}, null, "diagStatus");
+window.handleGetVersion_ = async ()=>{
+  try{
+    const v = await api.version();
+    if (v?.ok && $("#backendVersion")) $("#backendVersion").textContent = v.version;
+  }catch(e){ toast("Versione backend: errore"); }
+};
+
 /* ===================== REFRESH CICLICO ===================== */
 async function refreshNow(){
   await loadModelWithRetry();
@@ -381,48 +504,49 @@ async function refreshNow(){
 /* ===================== WIRING ===================== */
 function wire(){
   $$(".bottom-nav .nav-btn").forEach(b=>{
-    b.addEventListener("click", ()=>navTo(b.getAttribute("data-tab")));
+    b.addEventListener("click", () => navTo(b.getAttribute("data-tab")));
   });
 
-  $("#peopleBar")?.addEventListener("click", ()=>navTo("people"));
+  $("#peopleBar")?.addEventListener("click", () => navTo("people"));
 
   $("#btnOverride")?.addEventListener("click", async()=>{
-    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.override);
+    const f1=await apiFetch("get_flags");
+    const cur=boolish(f1?.override ?? f1?.flags?.override);
     await apiFetch("set_override",{value:String(!cur).toUpperCase()});
-    toast("Override: "+(!cur?"On":"Off")); refreshNow();
+    toast("Override: "+(!cur?"On":"Off"));
+    await refreshNow();
   });
 
   $("#btnVacanza")?.addEventListener("click", async()=>{
-    const f1=await apiFetch("get_flags"); const cur=!!(f1?.ok&&f1.vacanza);
+    const f1=await apiFetch("get_flags");
+    const cur=boolish(f1?.vacanza ?? f1?.flags?.vacanza);
     await apiFetch("set_vacanza",{value:String(!cur).toUpperCase()});
-    toast("Vacanza: "+(!cur?"On":"Off")); refreshNow();
+    toast("Vacanza: "+(!cur?"On":"Off"));
+    await refreshNow();
   });
 
   // Piante (feedback)
   $("#btnPiante")?.addEventListener("click", async()=>{
     const r=await apiFetch("piante");
     toast(r?.ok ? "Irrigazione: AVVIATA" : ("Irrigazione: ERRORE → "+(r?.error||"")));
+    await refreshNow();
   });
 
   // Tapparelle (feedback + toggle label)
   $("#btnAlza")?.addEventListener("click", async()=>{
     const goDown = ($("#lblAlza")?.textContent)==="Abbassa";
-    if (goDown){
-      const res = await apiFetch("abbassa_tutto");
-      toast(res?.ok ? "Tapparelle: GIÙ" : ("Tapparelle: ERRORE → "+(res?.error||"")));
-      if (res?.ok) $("#lblAlza").textContent="Alza";
-    }else{
-      const res = await apiFetch("alza_tutto");
-      toast(res?.ok ? "Tapparelle: SU" : ("Tapparelle: ERRORE → "+(res?.error||"")));
-      if (res?.ok) $("#lblAlza").textContent="Abbassa";
-    }
+    let res;
+    if (goDown)  res = await apiFetch("abbassa_tutto");
+    else         res = await apiFetch("alza_tutto");
+    toast(res?.ok ? (goDown?"Tapparelle: GIÙ":"Tapparelle: SU") : ("Tapparelle: ERRORE → "+(res?.error||"")));
+    await refreshNow();
   });
 
-  $("#btnOpenSettings")?.addEventListener("click", ()=>navTo("settings"));
-  $("#btnOpenTests")?.addEventListener("click",     ()=>navTo("tests"));
+  $("#btnOpenSettings")?.addEventListener("click", () => navTo("settings"));
+  $("#btnOpenTests")?.addEventListener("click",     () => navTo("tests"));
 
-  $("#btnBackToCrusc")?.addEventListener("click",   ()=>navTo("cruscotto"));
-  $("#btnRefreshReport")?.addEventListener("click", ()=>refreshTestsPage(true));
+  $("#btnBackToCrusc")?.addEventListener("click",   () => navTo("cruscotto"));
+  $("#btnRefreshReport")?.addEventListener("click", () => refreshTestsPage(true));
 
   $("#btnRunFullTestTop")?.addEventListener("click", async()=>{
     try{ const r = await apiFetch("diag_full_test");
@@ -430,7 +554,7 @@ function wire(){
     catch(e){ const el= $("#testSuiteStatusTop"); if (el) el.textContent = "Errore rete"; }
   });
 
-  // Quick test buttons
+  // Quick test buttons by id (se presenti)
   const bind=(id,fn)=>{ const el=$("#"+id); if(el) el.onclick=fn; };
   bind("tQuickList",   ()=>runQuick("list",{},  "tQuickList","diagStatus"));
   bind("tKaOn",        ()=>runQuick("ka_on",{name:"marco",minutes:5}, "tKaOn","diagStatus"));
@@ -447,13 +571,14 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   await refreshNow();
   try{ await refreshTestsPage(true); }catch(_){}
   REFRESH_TIMER = setInterval(refreshNow, 60000);
-  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refreshNow(); });
+  document.addEventListener("visibilitychange", () => { if(!document.hidden) refreshNow(); });
   window.addEventListener("online", refreshNow);
   window.addEventListener("refreshDashboard", refreshNow);
 });
 
+/* ===== Test suite UI (come nel tuo file) ===== */
 async function runFullTestUI(name='marco'){
-  const card = document.querySelector('#pageTests .tests-grid .card'); // prima card
+  const card = document.querySelector('#pageTests .tests-grid .card');
   let host = document.getElementById('fullTestSteps');
   if (!host){
     host = document.createElement('div');
@@ -466,10 +591,8 @@ async function runFullTestUI(name='marco'){
   const ul = host.querySelector('.step-list'); if (!ul) return;
   ul.innerHTML = '<li class="step">Esecuzione…</li>';
 
-  // avvia
   const res = await apiFetch('diag_full_test', { name });
 
-  // render
   ul.innerHTML = '';
   if (!res || !res.steps){
     const li = document.createElement('li');
@@ -483,16 +606,5 @@ async function runFullTestUI(name='marco'){
     const li = document.createElement('li');
     li.className = 'step ' + (s.skipped ? 'skip' : (s.ok ? 'ok' : 'err'));
     li.innerHTML = `
-      <div class="step-title">${s.title}</div>
-      <div class="step-meta">${s.ms} ms</div>
-      <div class="step-msg">${s.msg||''}</div>`;
-    ul.appendChild(li);
-  });
-
-  // badge stato in alto
-  const top = document.getElementById("testSuiteStatusTop");
-  if (top){
-    top.textContent = res.ok ? "OK ✓" : "ERR ×";
-    top.style.color = res.ok ? "#7bd88f" : "#ff6b6b";
-  }
-}
+      <div class="step-title">${asText(s.title)}</div>
+      <div class="step-meta">${asText(s.ms
