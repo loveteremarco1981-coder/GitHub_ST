@@ -34,7 +34,7 @@ function timeOnly(v){
   return "—";
 }
 
-/* === NUOVO: formatter sicuro per evitare [object Object] === */
+/* === Formatter sicuro per evitare [object Object] dove serve === */
 function asText(v){
   if (v === null || v === undefined) return "—";
   const t = typeof v;
@@ -42,17 +42,30 @@ function asText(v){
   if (t === "number")  return Number.isFinite(v) ? String(v) : "—";
   if (t === "boolean") return v ? "On" : "Off";
   if (Array.isArray(v)) return v.map(asText).join(", ");
-  // oggetto: prova campi parlanti, altrimenti JSON compatto
   const keys = ["label","name","title","value","id","text","code"];
-  for (const k of keys){ if (k in v && v[k] != null) return asText(v[k]); }
-  try { return JSON.stringify(v); } catch { return String(v); }
+  if (t === "object"){
+    for (const k of keys){ if (k in v && v[k] != null) return asText(v[k]); }
+    try { return JSON.stringify(v); } catch { return String(v); }
+  }
+  return String(v);
 }
-/* === NUOVO: normalizza lo stato in un "codice" (per classi/logica) === */
-function normState(s){
-  if (s === null || s === undefined) return "";
-  if (typeof s === "string") return s;
-  if (typeof s === "object") return String(s.id || s.code || s.name || s.label || s.value || "");
-  return String(s);
+
+/* === Normalizza lo STATO (per label e logica) === */
+function stateCode(s){
+  if (!s) return "";
+  if (typeof s === "string") return s.toUpperCase();
+  if (typeof s === "object"){
+    const raw = s.id || s.code || s.state || s.mode || s.day_night || s.value || s.name || "";
+    return String(raw).toUpperCase();
+  }
+  return String(s).toUpperCase();
+}
+function stateLabel(s){
+  if (!s) return "—";
+  if (typeof s === "object" && (s.label || s.name)) return String(s.label || s.name);
+  const code = stateCode(s);
+  if (!code) return "—";
+  return code.replace(/_/g," ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }
 
 /* ===================== MODEL (JSONP) ===================== */
@@ -95,17 +108,11 @@ async function loadModelWithRetry(){
 /* ===================== NAVIGAZIONE ===================== */
 function setBadgeState(st){
   const el = $("#stateBadge"); if(!el) return;
-
-  const code = normState(st).toUpperCase();     // <=== USA normState
+  const code  = stateCode(st);
+  const label = stateLabel(st);
   el.className = "state-badge";
   if (!code){ el.textContent = "—"; return; }
-
   el.classList.add(code.startsWith("COMFY") ? "ok" : "alert");
-
-  // label leggibile: preferisci label/name se disponibili
-  const label = (typeof st === "object" && (st.label || st.name))
-    ? String(st.label || st.name)
-    : code.replace("_"," ");
   el.textContent = label;
 }
 function navTo(tab){
@@ -153,14 +160,14 @@ function renderHome(m){
   $("#btnOverride").classList.toggle("on", !!m.override);
   $("#btnVacanza").classList.toggle("on", !!m.vacanza);
 
-  const stCode = normState(m.state).toUpperCase(); // <=== USA normState per la logica
-  $("#lblAlza").textContent = stCode==="COMFY_DAY" ? "Abbassa" : "Alza";
+  const st = stateCode(m.state);
+  $("#lblAlza").textContent = st==="COMFY_DAY" ? "Abbassa" : "Alza";
 
   const ppl = m.people || [];
   $("#peopleSummary").textContent = `${ppl.filter(p=>p.online).length} online / ${ppl.length} totali`;
 }
 function camsText(m){
-  const s = normState(m?.state).toUpperCase();   // <=== USA normState
+  const s = stateCode(m?.state);
   if (s.startsWith("SECURITY")) return "ON · ON";
   if (s==="COMFY_NIGHT")       return "OFF · ON";
   return "OFF · OFF";
@@ -168,7 +175,7 @@ function camsText(m){
 function renderCruscotto(m){
   const el = $("#cruscottoGrid"); if (!el || !m) return;
   const tiles = [
-    {key:'state',    title:'Stato',      icon:'🟢', value: asText(m.state)},   // <=== asText
+    {key:'state',    title:'Stato',      icon:'🟢', value: stateLabel(m.state)},
     {key:'presence', title:'Presenza',   icon:(m.presenzaEffettiva?'🏠':'🚪'), value:(m.presenzaEffettiva?'IN CASA':'FUORI')},
     {key:'meteo',    title:'Meteo',      icon:(m.weather?.iconEmoji||'🌤'), value:`${m.weather?.tempC!=null?Math.round(m.weather.tempC):'--'}° · ${m.weather?.windKmh!=null?Math.round(m.weather.windKmh):'--'} km/h`},
     {key:'cams',     title:'Telecamere', icon:'📷', value:camsText(m)},
@@ -203,16 +210,20 @@ function renderEnergyPage(m){
 async function loadPeople(){
   try{
     const r = await jsonpModel("?people=1");
-    const arr = r?.people || [];
+    const arr =
+      Array.isArray(r?.people)        ? r.people :
+      Array.isArray(r?.list)          ? r.list   :
+      Array.isArray(r?.people?.list)  ? r.people.list :
+      [];
     const ul = $("#peopleList"); if (!ul) return;
     ul.innerHTML = "";
     for (const p of arr){
       const ts = p.ts ? fmtTs(p.ts) : (p.tsText || "—");
       const li = document.createElement("li");
       li.innerHTML = `
-        <div>${asText(p.name)}</div>
-        <div class="sub">${asText(p.lastEvent)||"—"} • ${ts}</div>
-        <div><span class="badge ${p.online?'ok':'err'}">${p.online?'Online':'Offline'}</span></div>`;
+        <div>${(p && (p.name || p.label)) ? (p.name || p.label) : "—"}</div>
+        <div class="sub">${(p && (p.lastEvent || p.event || ""))} • ${ts}</div>
+        <div><span class="badge ${p?.online?'ok':'err'}">${p?.online?'Online':'Offline'}</span></div>`;
       ul.appendChild(li);
     }
   }catch(_){}
@@ -234,7 +245,6 @@ async function loadErrors(){
     const ul = $("#logErrors"); if (!ul) return;
     ul.innerHTML = "";
 
-    // newest first + solo errori
     let arr = (r?.logs || []).slice().sort((a,b)=> new Date(b.ts||0) - new Date(a.ts||0));
     arr = arr.filter(e => (String(e.code||'').includes("ERR") || String(e.code||'').includes("ERROR")));
 
@@ -395,6 +405,17 @@ async function runQuick(op, params={}, btnId=null, statusId="diagStatus"){
 }
 window.refreshTestsPage = refreshTestsPage;
 
+/* --- Compat globale per i pulsanti esistenti nella pagina Test --- */
+window.handleQuickDiag_ = function(op){
+  return runQuick(op, {}, null, "diagStatus");
+};
+window.handleGetVersion_ = async function(){
+  try{
+    const v = await api.version();
+    if (v?.ok && $("#backendVersion")) $("#backendVersion").textContent = v.version;
+  }catch(e){ toast("Versione backend: errore"); }
+};
+
 /* ===================== REFRESH CICLICO ===================== */
 async function refreshNow(){
   await loadModelWithRetry();
@@ -458,7 +479,7 @@ function wire(){
     catch(e){ const el= $("#testSuiteStatusTop"); if (el) el.textContent = "Errore rete"; }
   });
 
-  // Quick test buttons
+  // Quick test buttons (se usi id invece dell'onclick legacy)
   const bind=(id,fn)=>{ const el=$("#"+id); if(el) el.onclick=fn; };
   bind("tQuickList",   ()=>runQuick("list",{},  "tQuickList","diagStatus"));
   bind("tKaOn",        ()=>runQuick("ka_on",{name:"marco",minutes:5}, "tKaOn","diagStatus"));
@@ -517,7 +538,6 @@ async function runFullTestUI(name='marco'){
     ul.appendChild(li);
   });
 
-  // badge stato in alto
   const top = document.getElementById("testSuiteStatusTop");
   if (top){
     top.textContent = res.ok ? "OK ✓" : "ERR ×";
@@ -527,7 +547,6 @@ async function runFullTestUI(name='marco'){
 
 /* ===================== FALLBACK API (minimo per far funzionare i bottoni) ===================== */
 (function ensureApi(){
-  // apiFetch: prova POST JSON, poi fallback GET con query string
   if (typeof window.apiFetch !== "function"){
     window.apiFetch = async function apiFetch(op, params={}){
       const url = window.EXEC_URL || "";
@@ -548,24 +567,3 @@ async function runFullTestUI(name='marco'){
         return data;
       }catch(_e){
         // 2) fallback GET
-        const qs = new URLSearchParams();
-        qs.set("op", op);
-        Object.entries(params||{}).forEach(([k,v])=>{
-          qs.set(k, (v && typeof v === "object") ? JSON.stringify(v) : String(v));
-        });
-        const r2 = await fetch(url + (url.includes("?")?"&":"?") + qs.toString(), { method:"GET" });
-        try{ return await r2.json(); }catch(_){ return { ok:r2.ok, status:r2.status }; }
-      }
-    };
-  }
-
-  // api.version / api.quick minimi
-  window.api = window.api || {};
-  if (typeof window.api.version !== "function"){
-    window.api.version = async () => window.apiFetch("version");
-  }
-  if (typeof window.api.quick !== "function"){
-    // Chiama direttamente l'operazione richiesta (es. "ka_on", "list", "all_in", ...)
-    window.api.quick = async (op, params={}) => window.apiFetch(op, params);
-  }
-})();
